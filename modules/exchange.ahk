@@ -1145,16 +1145,16 @@ AsyncTradeSelectCurrency(currency)
 {
 	local
 	global vars
-	static rows := {"chaos": 0, "alt": 5}
+	static y_ratios := {"chaos": 0.63, "alt": 0.718}
 
-	If !rows.HasKey(currency)
+	If !y_ratios.HasKey(currency)
 		Return 0
 	MouseGetPos, xMouse, yMouse
 	xCurrency := vars.client.x + vars.client.w/2 - Round(vars.client.h * 0.055)
 	yCurrency := vars.client.y + Round(vars.client.h * 0.59)
 	Click, %xCurrency%, %yCurrency%
 	Sleep, 150
-	ySelection := vars.client.y + Round(vars.client.h * (0.62 + rows[currency] * 0.025))
+	ySelection := vars.client.y + Round(vars.client.h * y_ratios[currency])
 	Click, %xCurrency%, %ySelection%
 	Sleep, 150
 	xConfirm := vars.client.x + vars.client.w/2 + Round(vars.client.h * 0.135)

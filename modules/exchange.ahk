@@ -39,7 +39,7 @@
 
 	If !IsObject(vars.async)
 		vars.async := {"dIcon": settings.async.fHeight * 2 - 4}, vars.pics.async := {}
-	vars.async.currencies := {"chaos": "chaos", "exalted": "exalted", "transmut": "transmute", "aug": "aug", "regal": "regal"}
+	vars.async.currencies := {"chaos": "chaos", "exalted": "exalted", "alt": "alt", "transmut": "transmute", "aug": "aug", "regal": "regal"}
 
 	If FileExist("ini" vars.poe_version "\vaal street log.ini")
 	{
@@ -809,7 +809,7 @@ AsyncTradeReprice(mode := "", tooltip := "")
 		If !tooltip
 		{
 			price := SubStr(Clipboard, InStr(Clipboard, "note:") + 11), price := RTrim(price, " `n`r"), array := StrSplit(price, " ")
-			If !RegExMatch(price, "\d") || InStr(price, "offer") || (mode = "sell") && (array.1 = 1 && array.2 = alt_currency)
+			If !RegExMatch(price, "\d") || InStr(price, "offer") || vars.poe_version && (mode = "sell") && (array.1 = 1 && array.2 = alt_currency)
 			{
 				LLK_ToolTip(Lang_Trans("global_error"),,,,, "Red")
 				Return
@@ -852,8 +852,38 @@ AsyncTradeReprice(mode := "", tooltip := "")
 				AsyncTrade(), LLK_ToolTip(Lang_Trans("async_listing"),,,,, "Lime")
 				Return
 			}
+			If !vars.poe_version && (mode = "sell") && (array.1 = 1) && (array.2 = "alt")
+			{
+				LLK_ToolTip("minimum price: 1 alteration",,,,, "Yellow")
+				Return
+			}
 			Sleep, 100
 			SendInput, {RButton}
+			If !vars.poe_version && (mode = "sell")
+			{
+				Sleep, 250
+				If !AsyncTradePriceTarget(array.1, array.2, settings.async.minchange, price_new, currency_new, error)
+				{
+					SendInput, {ESC}
+					LLK_ToolTip((error = "minimum") ? "minimum price: 1 alteration" : Lang_Trans("async_pricefailed", 3),,,,, "Yellow")
+					Return
+				}
+				If !AsyncTradeApplyPrice(price_new, currency_new, array.2)
+				{
+					SendInput, {ESC}
+					LLK_ToolTip(Lang_Trans("global_error"),,,,, "Red")
+					Return
+				}
+
+				timestamp := A_NowUTC
+				If existing_item
+				{
+					vars.async[league].sell[existing_item].prices.Push([timestamp, price_new, currency_new])
+					IniWrite, % """" price_new " " currency_new """", % "ini" vars.poe_version "\async trade.ini", % existing_item, % "price " timestamp
+					AsyncTrade("sell")
+				}
+				Return
+			}
 		}
 
 		toggle := !toggle, GUI_name := "async_pricing" toggle, margin := settings.async.fWidth//2
@@ -1016,6 +1046,122 @@ AsyncTradeReprice(mode := "", tooltip := "")
 		Gui, %GUI_name%: Show, % "NA x" xPos " y" yPos
 		LLK_Overlay(hwnd_pricing, "show",, GUI_name), LLK_Overlay(hwnd_old, "destroy")
 	}
+}
+
+AsyncTradePriceTarget(amount, currency, minchange, ByRef target_amount, ByRef target_currency, ByRef error)
+{
+	local
+	global vars
+
+	target_amount := target_currency := error := "", amount += 0
+	If (amount > 1)
+		AsyncTradePriceStep(amount, minchange, target_amount, reduction)
+	If target_amount && (reduction < 2*minchange)
+	{
+		target_currency := currency
+		Return 1
+	}
+
+	next_currency := (currency = "divine") ? "chaos" : (currency = "chaos") ? "alt" : ""
+	If !next_currency
+	{
+		If target_amount
+		{
+			target_currency := currency
+			Return 1
+		}
+		error := (currency = "alt" && amount = 1) ? "minimum" : "unsupported"
+		Return 0
+	}
+
+	Economy_Update("currency", 10)
+	If (vars.economy.currency.timestamp.2 = "failed") || !vars.economy.currency[currency] || !vars.economy.currency[next_currency]
+	{
+		If target_amount
+		{
+			target_currency := currency
+			Return 1
+		}
+		error := "prices"
+		Return 0
+	}
+
+	converted_amount := Round(amount * vars.economy.currency[currency] / vars.economy.currency[next_currency])
+	If AsyncTradePriceStep(converted_amount, minchange, converted_target, converted_reduction)
+	&& (!target_amount || Abs(converted_reduction - minchange) < Abs(reduction - minchange))
+	{
+		target_amount := converted_target, target_currency := next_currency
+		Return 1
+	}
+	If target_amount
+	{
+		target_currency := currency
+		Return 1
+	}
+	error := "prices"
+	Return 0
+}
+
+AsyncTradePriceStep(amount, minchange, ByRef target_amount, ByRef reduction)
+{
+	local
+
+	target_amount := reduction := "", amount += 0
+	If (amount <= 1)
+		Return 0
+	target_exact := amount * (100 - minchange) / 100
+	target_low := Max(1, Floor(target_exact)), target_high := Min(amount - 1, Ceil(target_exact))
+	reduction_low := 100 * (1 - target_low / amount), reduction_high := 100 * (1 - target_high / amount)
+	target_amount := (Abs(reduction_low - minchange) < Abs(reduction_high - minchange)) ? target_low : target_high
+	reduction := 100 * (1 - target_amount / amount)
+	Return 1
+}
+
+AsyncTradeApplyPrice(amount, currency, currency_current)
+{
+	local
+	global vars
+
+	Clipboard := "", Clipboard := amount
+	ClipWait, 0.1
+	If ErrorLevel
+		Return 0
+	WinActivate, % "ahk_id " vars.hwnd.poe_client
+	WinWaitActive, % "ahk_id " vars.hwnd.poe_client,, 2
+	If ErrorLevel
+		Return 0
+	Sleep, 100
+	SendInput, ^{a}^{v}
+	If (currency = currency_current)
+	{
+		SendInput, {ENTER}
+		Sleep, 100
+		Return 1
+	}
+	Return AsyncTradeSelectCurrency(currency)
+}
+
+AsyncTradeSelectCurrency(currency)
+{
+	local
+	global vars
+	static rows := {"chaos": 0, "alt": 5}
+
+	If !rows.HasKey(currency)
+		Return 0
+	MouseGetPos, xMouse, yMouse
+	xCurrency := vars.client.x + vars.client.w/2 - Round(vars.client.h * 0.055)
+	yCurrency := vars.client.y + Round(vars.client.h * 0.59)
+	Click, %xCurrency%, %yCurrency%
+	Sleep, 150
+	ySelection := vars.client.y + Round(vars.client.h * (0.62 + rows[currency] * 0.025))
+	Click, %xCurrency%, %ySelection%
+	Sleep, 150
+	xConfirm := vars.client.x + vars.client.w/2 + Round(vars.client.h * 0.135)
+	Click, %xConfirm%, %yCurrency%
+	Sleep, 150
+	MouseMove, %xMouse%, %yMouse%, 0
+	Return 1
 }
 
 Exchange(cHWND := "", hotkey := "")

@@ -1055,9 +1055,8 @@ AsyncTradePriceTarget(amount, currency, minchange, ByRef target_amount, ByRef ta
 
 	target_amount := target_currency := error := "", amount += 0
 	If (amount > 1)
-		AsyncTradePriceStep(amount, minchange, target_amount, reduction)
-	If target_amount && (reduction < 2*minchange)
 	{
+		AsyncTradePriceStep(amount, minchange, target_amount, reduction)
 		target_currency := currency
 		Return 1
 	}
@@ -1065,11 +1064,6 @@ AsyncTradePriceTarget(amount, currency, minchange, ByRef target_amount, ByRef ta
 	next_currency := (currency = "divine") ? "chaos" : (currency = "chaos") ? "alt" : ""
 	If !next_currency
 	{
-		If target_amount
-		{
-			target_currency := currency
-			Return 1
-		}
 		error := (currency = "alt" && amount = 1) ? "minimum" : "unsupported"
 		Return 0
 	}
@@ -1077,25 +1071,14 @@ AsyncTradePriceTarget(amount, currency, minchange, ByRef target_amount, ByRef ta
 	Economy_Update("currency", 10)
 	If (vars.economy.currency.timestamp.2 = "failed") || !vars.economy.currency[currency] || !vars.economy.currency[next_currency]
 	{
-		If target_amount
-		{
-			target_currency := currency
-			Return 1
-		}
 		error := "prices"
 		Return 0
 	}
 
 	converted_amount := Round(amount * vars.economy.currency[currency] / vars.economy.currency[next_currency])
 	If AsyncTradePriceStep(converted_amount, minchange, converted_target, converted_reduction)
-	&& (!target_amount || Abs(converted_reduction - minchange) < Abs(reduction - minchange))
 	{
 		target_amount := converted_target, target_currency := next_currency
-		Return 1
-	}
-	If target_amount
-	{
-		target_currency := currency
 		Return 1
 	}
 	error := "prices"

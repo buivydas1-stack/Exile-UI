@@ -2,7 +2,10 @@
 #SingleInstance Force
 SetWorkingDir, %A_ScriptDir%\..
 
-global db := {"item_dust": {"Willowgift": 10.5}}
+global db := {"item_dust": {"Willowgift": 10.5}, "item_bases": {"_bases": {"Agate Amulet": "1", "Heavy Belt": "5"
+, "Haunted Bascinet": "18", "Convoking Wand": "35", "Tomahawk": "3", "Rusted Hatchet": "3", "Crude Bow": "8"
+, "Imperial Bow": "8", "Gnarled Branch": "29", "Wyrmbone Rapier": "32", "Corroded Blade": "33"
+, "Titanium Spirit Shield": "28", "Archon Kite Shield": "28", "Cedar Tower Shield": "28", "Exhausting Spirit Shield": "28"}}}
 global dust_test_failures := 0
 global vars := {"iteminfo": {}}
 
@@ -48,6 +51,34 @@ base.dust_influences := 0
 corrupted := base.Clone(), corrupted.dust_corruption_implicits := 1
 DustTest_Near("corruption implicit", EstimateDust(corrupted).value / EstimateDust(base).value, 1.5, 0.001)
 
+tier_colors := ["00FF00", "006600", "FFFF00", "FF8000", "FF3333", "990000", "00FFFF"], tier_colors[0] := "3399ff"
+hour_color_cases := [[49999, "990000", "White"], [50000, "FF8000", "Black"], [59999, "FF8000", "Black"]
+, [60000, "00FF00", "Black"], [99999, "00FF00", "Black"], [100000, "White", "Black"]]
+For index, test in hour_color_cases
+{
+	color := Iteminfo_DustColor(test[1], "hour", tier_colors)
+	DustTest_Equal("dust hour color background " index, color.background, test[2])
+	DustTest_Equal("dust hour color text " index, color.text, test[3])
+}
+
+slot_color_cases := [[3999, "990000", "White"], [4000, "FF8000", "Black"], [7999, "FF8000", "Black"]
+, [8000, "00FF00", "Black"], [19999, "00FF00", "Black"], [20000, "White", "Black"]]
+For index, test in slot_color_cases
+{
+	color := Iteminfo_DustColor(test[1], "slot", tier_colors)
+	DustTest_Equal("dust slot color background " index, color.background, test[2])
+	DustTest_Equal("dust slot color text " index, color.text, test[3])
+}
+
+DustTest_Near("dust per slot", CalculateDustPerSlot(60000, 8), 7500, 0)
+slot_cases := [["Agate Amulet", 1], ["Heavy Belt", 2], ["Haunted Bascinet", 4], ["Convoking Wand", 3]
+, ["Tomahawk", 6], ["Rusted Hatchet", 3], ["Crude Bow", 6], ["Imperial Bow", 8], ["Gnarled Branch", 4]
+, ["Wyrmbone Rapier", 4], ["Corroded Blade", 4], ["Titanium Spirit Shield", 4], ["Archon Kite Shield", 6]
+, ["Cedar Tower Shield", 8], ["Exhausting Spirit Shield", 6]]
+For index, test in slot_cases
+	DustTest_Near("dust slots " test[1], Iteminfo_DustSlots({"itembase": test[1]}), test[2], 0)
+DustTest_Near("dust slots unknown", Iteminfo_DustSlots({"itembase": "Unknown Base"}), 0, 0)
+
 duration_cases := [[72, 4, 286], [68, 4, 143], [64, 4, 129], [63, 4, 126], [62, 1, 77], [56, 2, 78], [41, 5, 81]]
 For index, test in duration_cases
 {
@@ -73,6 +104,15 @@ DustTest_Near(label, actual, expected, tolerance)
 		Return
 	dust_test_failures += 1
 	FileAppend, % "FAIL " label ": actual=" actual " expected=" expected " tolerance=" tolerance "`n", *
+}
+
+DustTest_Equal(label, actual, expected)
+{
+	global dust_test_failures
+	If (actual = expected)
+		Return
+	dust_test_failures += 1
+	FileAppend, % "FAIL " label ": actual=" actual " expected=" expected "`n", *
 }
 
 Lang_Trans(key)

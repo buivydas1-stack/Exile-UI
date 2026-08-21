@@ -106,6 +106,63 @@ CalculateDustPerHour(dust, seconds)
 	Return (seconds > 0) ? Round(dust * 3600 / seconds) : 0
 }
 
+CalculateDustPerSlot(dust, slots)
+{
+	local
+
+	Return (slots > 0) ? Round(dust / slots) : 0
+}
+
+Iteminfo_DustSlots(item)
+{
+	local
+	global db
+	; Inventory cells by item class, with base-specific footprint exceptions from current PoE1 base-item data.
+	static default_slots := {1: 1, 2: 1, 3: 6, 4: 8, 5: 2, 6: 6, 7: 4, 8: 8, 9: 4, 10: 3, 11: 3, 12: 2
+	, 13: 2, 14: 2, 15: 2, 16: 4, 17: 2, 18: 4, 19: 1, 20: 1, 21: 1, 22: 1, 23: 6, 24: 6
+	, 25: 8, 26: 6, 27: 1, 28: 4, 29: 8, 30: 8, 31: 6, 32: 4, 33: 8, 34: 2, 35: 3}
+	static three_slot_bases := "|Rusted Hatchet|Ancestral Club|Barbed Club|Driftwood Club|Petrified Club|Spiked Club|Tenderizer|Tribal Club|Driftwood Sceptre|Copper Sword|Corsair Sword|Cutlass|Gemstone Sword|Rusted Sword|Sabre|Variscite Blade|"
+	static four_slot_bases := "|Gnarled Branch|Corroded Blade|"
+	static short_bows := "|Crude Bow|Ethereal Bow|Grove Bow|Short Bow|Thicket Bow|"
+
+	If !IsObject(item) || !item.itembase || !IsObject(db.item_bases)
+		Return 0
+	class_id := db.item_bases._bases[item.itembase]
+	If !default_slots.HasKey(class_id)
+		Return 0
+
+	If InStr(three_slot_bases, "|" item.itembase "|", 0)
+		Return 3
+	If InStr(four_slot_bases, "|" item.itembase "|", 0)
+		Return 4
+	If (class_id = 8) && InStr(short_bows, "|" item.itembase "|", 0)
+		Return 6
+	If (class_id = 28)
+	{
+		If InStr(item.itembase, "Round Shield") || InStr(item.itembase, "Kite Shield")
+			Return 6
+		If InStr("|Exhausting Spirit Shield|Subsuming Spirit Shield|Transfer-attuned Spirit Shield|", "|" item.itembase "|", 0)
+			Return 6
+		If InStr(item.itembase, "Tower Shield")
+			Return InStr("|Exothermic Tower Shield|Heat-attuned Tower Shield|Magmatic Tower Shield|", "|" item.itembase "|", 0) ? 6 : 8
+	}
+	Return default_slots[class_id]
+}
+
+Iteminfo_DustColor(value, metric, tier_colors)
+{
+	local
+
+	thresholds := (metric = "slot") ? [4000, 8000, 20000] : [50000, 60000, 100000]
+	If (value < thresholds.1)
+		Return {"background": tier_colors.6, "text": "White"}
+	If (value < thresholds.2)
+		Return {"background": tier_colors.4, "text": "Black"}
+	If (value < thresholds.3)
+		Return {"background": tier_colors.1, "text": "Black"}
+	Return {"background": "White", "text": "Black"}
+}
+
 FormatDustPerHour(value)
 {
 	local

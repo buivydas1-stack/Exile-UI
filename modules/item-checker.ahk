@@ -966,9 +966,11 @@ Iteminfo_Dust()
 		item.dust := dust
 		Return
 	}
-	time := EstimateDisenchantTime(item), per_hour := CalculateDustPerHour(dust.value, time.seconds)
-	item.dust := {"supported": 1, "estimated_dust": dust.value, "estimated_seconds": time.seconds, "per_hour": per_hour
-	, "displayed": (dust.approximate || time.approximate ? "~" : "") FormatDustPerHour(per_hour), "approximate": dust.approximate || time.approximate
+	time := EstimateDisenchantTime(item), per_hour := CalculateDustPerHour(dust.value, time.seconds), slots := Iteminfo_DustSlots(item)
+	per_slot := CalculateDustPerSlot(dust.value, slots)
+	item.dust := {"supported": 1, "estimated_dust": dust.value, "estimated_seconds": time.seconds, "per_hour": per_hour, "per_slot": per_slot, "slots": slots
+	, "displayed": (dust.approximate || time.approximate ? "~" : "") FormatDustPerHour(per_hour)
+	, "displayed_slot": (dust.approximate ? "~" : "") FormatDustPerHour(per_slot), "approximate": dust.approximate || time.approximate
 	, "matched_mods": dust.matched_mods, "unmatched_mods": dust.unmatched_mods, "corruption_implicits": item.dust_corruption_implicits
 	, "influences": item.dust_influences, "item_level_factor": dust.item_level_factor, "duration_units": time.units}
 }
@@ -1101,8 +1103,20 @@ Iteminfo_GUI()
 
 	If settings.iteminfo.dust && IsObject(item.dust) && item.dust.supported
 	{
-		Gui, %GUI_name%: Add, Text, % "xs Section Border Center BackgroundTrans cFFD27F w" UI.wSegment*UI.segments " h" UI.hSegment, % "DUST/H " item.dust.displayed
-		Gui, %GUI_name%: Add, Progress, % "xp yp wp hp Disabled Border BackgroundBlack", 0
+		dust_hour_color := Iteminfo_DustColor(item.dust.per_hour, "hour", settings.iteminfo.colors_tier)
+		If item.dust.slots
+		{
+			dust_slot_color := Iteminfo_DustColor(item.dust.per_slot, "slot", settings.iteminfo.colors_tier), dust_width := UI.wSegment*UI.segments/2
+			Gui, %GUI_name%: Add, Text, % "xs Section Border Center BackgroundTrans c" dust_slot_color.text " w" dust_width " h" UI.hSegment, % "DUST/SLOT " item.dust.displayed_slot
+			Gui, %GUI_name%: Add, Progress, % "xp yp wp hp Disabled Border BackgroundBlack c" dust_slot_color.background, 100
+			Gui, %GUI_name%: Add, Text, % "ys Border Center BackgroundTrans c" dust_hour_color.text " w" dust_width " h" UI.hSegment, % "DUST/H " item.dust.displayed
+			Gui, %GUI_name%: Add, Progress, % "xp yp wp hp Disabled Border BackgroundBlack c" dust_hour_color.background, 100
+		}
+		Else
+		{
+			Gui, %GUI_name%: Add, Text, % "xs Section Border Center BackgroundTrans c" dust_hour_color.text " w" UI.wSegment*UI.segments " h" UI.hSegment, % "DUST/H " item.dust.displayed
+			Gui, %GUI_name%: Add, Progress, % "xp yp wp hp Disabled Border BackgroundBlack c" dust_hour_color.background, 100
+		}
 	}
 
 	;///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,8 +1,8 @@
 {
   "_meta": {
     "source": "https://poedb.tw/us/Kingsmarch#Disenchant",
-    "updated": "2026-08-16",
-    "entries": 1510,
+    "updated": "2026-08-21",
+    "entries": 1511,
     "value": "unique disenchant_value; multiply locally by item-level and full Kingsmarch bonuses"
   },
   "Abberath's Hooves": 34.61,
@@ -551,7 +551,8 @@
   "Inextricable Fate": 9.61,
   "Infernal Mantle": 13.26,
   "Infractem": 4.65,
-  "Infused Beachhead67.73135460162552Wraithlord": 66.31,
+  "Infused Beachhead": 67.73,
+  "Wraithlord": 66.31,
   "Inya's Epiphany": 11.78,
   "Innsbury Edge": 4.87,
   "Inpulsa's Broken Heart": 43.48,

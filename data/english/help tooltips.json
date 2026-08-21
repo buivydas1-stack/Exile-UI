@@ -461,11 +461,8 @@
     ],
     "iteminfo dust": [
       "shows an estimated Kingsmarch Thaumaturgic Dust per hour value in the item tooltip",
-      "rare and magic values are approximate; unique base values are bundled locally"
-    ],
-    "iteminfo dust seconds": [
-      "your in-game disenchant time in seconds for one item-level 84 item",
-      "use this to calibrate the estimate to your current workers; the default is 118 seconds"
+      "rare and magic values are approximate; unique base values are bundled locally",
+      "duration assumes six maximum-rank disenchanters"
     ],
     "iteminfo marking global": [
       "colors used to highlight globally (un)desired mods",

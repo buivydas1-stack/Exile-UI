@@ -146,6 +146,7 @@ Return
 #Include modules\GUI.ahk
 #Include modules\hotkeys.ahk
 #Include *i modules\hotkeys custom.ahk
+#Include modules\item-checker dust.ahk
 #Include modules\item-checker.ahk
 #Include modules\languages.ahk
 #Include modules\leveling tracker.ahk

@@ -1092,7 +1092,6 @@
 		m_iteminfo_stattrack	=	"stat-track"						;## option to track the stats of your current gear
 		m_iteminfo_basestats	=	"base-stats"						;## option to show/compare base-stats, e.g armor, evasion, ES, attack-speed, phys/ele dmg
 		m_iteminfo_dust		=	"DUST/H"
-		m_iteminfo_dusttime	=	"ilvl 84 sec"
 		m_iteminfo_iclass		=	"class"
 		m_iteminfo_ilvl		=	"display item-lvl requirements"
 		m_iteminfo_highlight	=	"highlight customization:"

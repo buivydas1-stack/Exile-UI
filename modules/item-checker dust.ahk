@@ -1,0 +1,160 @@
+﻿Iteminfo_DustConstants()
+{
+	local
+	static constants := {"minimum_item_level": 65, "maximum_item_level": 84, "item_level_steps": 20
+	, "unique_multiplier": 125, "quality_bonus_per_percent": 0.02
+	, "corruption_implicit_bonus": 0.5, "influence_bonus": 0.5
+	, "duration_base_units": 4, "duration_unique_units": 8, "duration_unit_floor_seconds": 9
+	, "duration_low_level_scale": 0.4, "duration_low_level_offset": 9.5, "duration_ilvl84_unit_seconds": 89.375
+	, "mod_value_base": 3.9843314, "mod_value_growth": 1.050192, "mod_value_offset": 0.30418}
+
+	Return constants
+}
+
+Iteminfo_DustItemLevelFactor(item_level)
+{
+	local
+
+	constants := Iteminfo_DustConstants()
+	Return Max(1, Min(item_level, constants.maximum_item_level) - constants.minimum_item_level + 1)
+}
+
+EstimateDust(item)
+{
+	local
+	global db
+
+	result := {"supported": 0, "approximate": 1, "matched_mods": 0, "unmatched_mods": 0}
+	If item.unid
+	{
+		result.reason := "unidentified"
+		Return result
+	}
+	If (item.rarity = Lang_Trans("items_normal"))
+	{
+		result.reason := "normal items have no supported dust contribution"
+		Return result
+	}
+
+	constants := Iteminfo_DustConstants(), item_level_factor := Iteminfo_DustItemLevelFactor(item.ilvl)
+	; Items without a quality line leave this field blank, which propagates through AHK v1 arithmetic instead of behaving as zero.
+	quality := IsNumber(item.quality) ? item.quality : 0
+	increased := 1 + (quality * constants.quality_bonus_per_percent) + (item.dust_corruption_implicits * constants.corruption_implicit_bonus) + (item.dust_influences * constants.influence_bonus)
+	If (item.rarity = Lang_Trans("items_unique"))
+	{
+		If !IsObject(db.item_dust)
+			DB_Load("item_dust")
+		name := StrReplace(StrReplace(item.name, "foulborn "), "&&", "&")
+		If !db.item_dust.HasKey(name)
+		{
+			result.reason := "unique not present in local dust table"
+			Return result
+		}
+		; In 3.29.3 maximum-rank live samples, unique yield is base * 125 * ilvl-factor. Bonuses are additive.
+		result.value := Round(db.item_dust[name] * constants.unique_multiplier * item_level_factor * increased)
+		result.supported := 1, result.approximate := 0, result.item_level_factor := item_level_factor
+		Return result
+	}
+
+	If !LLK_PatternMatch(item.rarity, "", [Lang_Trans("items_magic"), Lang_Trans("items_rare")],,, 0)
+	{
+		result.reason := "unsupported rarity"
+		Return result
+	}
+
+	base_value := 0
+	For index, mod in item.dust_mods
+		If IsNumber(mod.level)
+			base_value += Iteminfo_DustModValue(mod.level), result.matched_mods += 1
+		Else result.unmatched_mods += 1
+	If !result.matched_mods
+	{
+		result.reason := "no explicit modifiers matched"
+		Return result
+	}
+
+	; Rare/magic values are additive by modifier generation-level. Rarity itself adds no multiplier.
+	result.value := Round(base_value * item_level_factor * increased)
+	result.supported := 1, result.item_level_factor := item_level_factor
+	Return result
+}
+
+EstimateDisenchantTime(item)
+{
+	local
+
+	; Calibrated from 3.29.3 samples with six maximum-rank workers. Magic/rare duration adds one unit per explicit mod.
+	constants := Iteminfo_DustConstants(), unique := (item.rarity = Lang_Trans("items_unique"))
+	units := unique ? constants.duration_unique_units : constants.duration_base_units + (IsObject(item.dust_mods) ? item.dust_mods.Count() : 0)
+	Return {"seconds": Max(1, Ceil(units * Iteminfo_DisenchantUnitSeconds(item.ilvl))), "units": units, "approximate": 1}
+}
+
+Iteminfo_DisenchantUnitSeconds(item_level)
+{
+	local
+
+	constants := Iteminfo_DustConstants()
+	low_level_seconds := Max(constants.duration_unit_floor_seconds, item_level * constants.duration_low_level_scale - constants.duration_low_level_offset)
+	high_level_seconds := constants.duration_ilvl84_unit_seconds * Iteminfo_DustItemLevelFactor(item_level) / constants.item_level_steps
+	Return Max(low_level_seconds, high_level_seconds)
+}
+
+CalculateDustPerHour(dust, seconds)
+{
+	local
+
+	Return (seconds > 0) ? Round(dust * 3600 / seconds) : 0
+}
+
+FormatDustPerHour(value)
+{
+	local
+
+	If (value < 1000)
+		Return Round(value)
+	If (value < 10000)
+		Return RegExReplace(Format("{:0.1f}", value / 1000), "\.0$") "k"
+	If (value < 1000000)
+		Return Round(value / 1000) "k"
+	If (value < 10000000)
+		Return RegExReplace(Format("{:0.1f}", value / 1000000), "\.0$") "m"
+	Return Round(value / 1000000) "m"
+}
+
+Iteminfo_DustModValue(level)
+{
+	local
+
+	; Live samples show an exponential curve by modifier generation-level, not displayed tier or roll.
+	constants := Iteminfo_DustConstants()
+	Return constants.mod_value_base * (constants.mod_value_growth ** level) + constants.mod_value_offset
+}
+
+Iteminfo_DustCraftLevel(rank)
+{
+	local
+
+	; Crafting-bench data is not present in item mods.json. This rank fallback is calibrated to the measured rank-3 accuracy craft.
+	Return Min(84, Max(1, rank * 24 - 4))
+}
+
+Iteminfo_DustMods(item)
+{
+	local
+	global vars
+
+	mods := []
+	Loop, Parse, % vars.iteminfo.clipboard2, |
+	{
+		If !A_LoopField
+			Continue
+		name := SubStr(A_LoopField, InStr(A_LoopField, """",,, 1) + 1, InStr(A_LoopField, """",,, 2) - InStr(A_LoopField, """",,, 1) - 1)
+		crafted := InStr(A_LoopField, "master crafted") ? 1 : 0
+		rank := RegExMatch(A_LoopField, "i)\(rank:\s*(\d+)\)", match) ? match1 : ""
+		level := Iteminfo_ModLevel(A_LoopField, item)
+		If crafted && !IsNumber(level) && IsNumber(rank)
+			level := Iteminfo_DustCraftLevel(rank)
+		mods.Push({"name": name, "level": level, "crafted": crafted, "rank": rank})
+	}
+	Return mods
+}

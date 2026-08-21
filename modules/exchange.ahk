@@ -854,15 +854,15 @@ AsyncTradeReprice(mode := "", tooltip := "")
 			}
 			If !vars.poe_version && (mode = "sell") && (array.1 = 1) && (array.2 = "alt")
 			{
-				Sleep, 33
+				Sleep, 20
 				SendInput, ^{LButton}
 				Return
 			}
-			Sleep, 33
+			Sleep, 20
 			SendInput, {RButton}
 			If !vars.poe_version && (mode = "sell")
 			{
-				Sleep, 83
+				Sleep, 60
 				If !AsyncTradePriceTarget(array.1, array.2, settings.async.minchange, price_new, currency_new, error)
 				{
 					SendInput, {ESC}
@@ -1124,12 +1124,12 @@ AsyncTradeApplyPrice(amount, currency, currency_current)
 	WinWaitActive, % "ahk_id " vars.hwnd.poe_client,, 2
 	If ErrorLevel
 		Return 0
-	Sleep, 33
+	Sleep, 20
 	SendInput, ^{a}^{v}
 	If (currency = currency_current)
 	{
 		SendInput, {ENTER}
-		Sleep, 33
+		Sleep, 20
 		Return 1
 	}
 	Return AsyncTradeSelectCurrency(currency)
@@ -1149,13 +1149,13 @@ AsyncTradeSelectCurrency(currency)
 	; The merchant price dialog grows around the displayed item. Each row above two shifts the controls down by ~2.3% of client height.
 	yCurrency := vars.client.y + Round(vars.client.h * (0.595 + Max(0, item_height - 2) * 0.023))
 	Click, %xCurrency%, %yCurrency%
-	Sleep, 50
+	Sleep, 30
 	ySelection := yCurrency + Round(vars.client.h * y_offsets[currency])
 	Click, %xCurrency%, %ySelection%
-	Sleep, 50
+	Sleep, 30
 	xConfirm := vars.client.x + vars.client.w/2 + Round(vars.client.h * 0.135)
 	Click, %xConfirm%, %yCurrency%
-	Sleep, 50
+	Sleep, 30
 	MouseMove, %xMouse%, %yMouse%, 0
 	Return 1
 }

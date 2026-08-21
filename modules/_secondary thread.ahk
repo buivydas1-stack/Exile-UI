@@ -50,6 +50,7 @@ Return
 #Include modules\clone-frames.ahk
 #Include modules\exchange.ahk
 #Include modules\GUI.ahk
+#Include modules\item-checker dust.ahk
 #Include modules\item-checker.ahk
 #Include modules\languages.ahk
 #Include modules\leveling tracker.ahk

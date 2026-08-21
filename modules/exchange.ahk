@@ -854,15 +854,15 @@ AsyncTradeReprice(mode := "", tooltip := "")
 			}
 			If !vars.poe_version && (mode = "sell") && (array.1 = 1) && (array.2 = "alt")
 			{
-				Sleep, 100
+				Sleep, 33
 				SendInput, ^{LButton}
 				Return
 			}
-			Sleep, 100
+			Sleep, 33
 			SendInput, {RButton}
 			If !vars.poe_version && (mode = "sell")
 			{
-				Sleep, 250
+				Sleep, 83
 				If !AsyncTradePriceTarget(array.1, array.2, settings.async.minchange, price_new, currency_new, error)
 				{
 					SendInput, {ESC}
@@ -1124,12 +1124,12 @@ AsyncTradeApplyPrice(amount, currency, currency_current)
 	WinWaitActive, % "ahk_id " vars.hwnd.poe_client,, 2
 	If ErrorLevel
 		Return 0
-	Sleep, 100
+	Sleep, 33
 	SendInput, ^{a}^{v}
 	If (currency = currency_current)
 	{
 		SendInput, {ENTER}
-		Sleep, 100
+		Sleep, 33
 		Return 1
 	}
 	Return AsyncTradeSelectCurrency(currency)
@@ -1139,23 +1139,50 @@ AsyncTradeSelectCurrency(currency)
 {
 	local
 	global vars
-	static y_ratios := {"chaos": 0.63, "alt": 0.718}
+	static y_offsets := {"chaos": 0.04, "alt": 0.128}
 
-	If !y_ratios.HasKey(currency)
+	If !y_offsets.HasKey(currency)
 		Return 0
 	MouseGetPos, xMouse, yMouse
+	item_height := AsyncTradeItemHeight(vars.omnikey.item)
 	xCurrency := vars.client.x + vars.client.w/2 - Round(vars.client.h * 0.055)
-	yCurrency := vars.client.y + Round(vars.client.h * 0.59)
+	; The merchant price dialog grows around the displayed item. Each row above two shifts the controls down by ~2.3% of client height.
+	yCurrency := vars.client.y + Round(vars.client.h * (0.595 + Max(0, item_height - 2) * 0.023))
 	Click, %xCurrency%, %yCurrency%
-	Sleep, 150
-	ySelection := vars.client.y + Round(vars.client.h * y_ratios[currency])
+	Sleep, 50
+	ySelection := yCurrency + Round(vars.client.h * y_offsets[currency])
 	Click, %xCurrency%, %ySelection%
-	Sleep, 150
+	Sleep, 50
 	xConfirm := vars.client.x + vars.client.w/2 + Round(vars.client.h * 0.135)
 	Click, %xConfirm%, %yCurrency%
-	Sleep, 150
+	Sleep, 50
 	MouseMove, %xMouse%, %yMouse%, 0
 	Return 1
+}
+
+AsyncTradeItemHeight(item)
+{
+	local
+	global db
+	static heights := {1: 1, 2: 1, 3: 3, 4: 4, 5: 1, 6: 3, 7: 2, 8: 4, 9: 2, 10: 3, 11: 3, 12: 2, 13: 2, 14: 2, 15: 2
+	, 16: 2, 17: 2, 18: 2, 19: 1, 20: 1, 21: 1, 22: 1, 23: 3, 24: 3, 25: 4, 26: 3, 27: 1, 28: 2, 29: 4, 30: 4
+	, 31: 3, 32: 4, 33: 4, 34: 2, 35: 3, 36: 2, 37: 2, 38: 2, 39: 2}
+
+	If !IsObject(item) || !item.itembase || !IsObject(db.item_bases)
+		Return 2
+	class_id := db.item_bases._bases[item.itembase]
+	If (class_id = 8) && InStr("|Crude Bow|Grove Bow|Short Bow|Thicket Bow|", "|" item.itembase "|", 0)
+		Return 3
+	If (class_id = 28)
+	{
+		If InStr(item.itembase, "Round Shield") || InStr(item.itembase, "Kite Shield")
+			Return 3
+		If InStr("|Exhausting Spirit Shield|Subsuming Spirit Shield|Transfer-attuned Spirit Shield|", "|" item.itembase "|", 0)
+			Return 3
+		If InStr(item.itembase, "Tower Shield")
+			Return InStr("|Exothermic Tower Shield|Heat-attuned Tower Shield|Magmatic Tower Shield|", "|" item.itembase "|", 0) ? 3 : 4
+	}
+	Return heights.HasKey(class_id) ? heights[class_id] : 2
 }
 
 Exchange(cHWND := "", hotkey := "")

@@ -52,7 +52,7 @@ corrupted := base.Clone(), corrupted.dust_corruption_implicits := 1
 DustTest_Near("corruption implicit", EstimateDust(corrupted).value / EstimateDust(base).value, 1.5, 0.001)
 
 tier_colors := ["00FF00", "006600", "FFFF00", "FF8000", "FF3333", "990000", "00FFFF"], tier_colors[0] := "3399ff"
-hour_color_cases := [[49999, "990000", "White"], [50000, "FF8000", "Black"], [59999, "FF8000", "Black"]
+hour_color_cases := [[39999, "990000", "White"], [40000, "FF8000", "Black"], [59999, "FF8000", "Black"]
 , [60000, "00FF00", "Black"], [99999, "00FF00", "Black"], [100000, "White", "Black"]]
 For index, test in hour_color_cases
 {

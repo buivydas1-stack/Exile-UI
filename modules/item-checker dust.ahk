@@ -153,7 +153,7 @@ Iteminfo_DustColor(value, metric, tier_colors)
 {
 	local
 
-	thresholds := (metric = "slot") ? [4000, 8000, 20000] : [50000, 60000, 100000]
+	thresholds := (metric = "slot") ? [4000, 8000, 20000] : [40000, 60000, 100000]
 	If (value < thresholds.1)
 		Return {"background": tier_colors.6, "text": "White"}
 	If (value < thresholds.2)

@@ -21,6 +21,10 @@
 	settings.iteminfo.roll_range := !Blank(check := ini.settings["roll range"]) ? check : ((check1 := ini.settings["tier bars"]) ? check1 : 1)
 	settings.iteminfo.qual_scaling := !Blank(check := ini.settings["quality scaling"]) ? check : 0
 	settings.iteminfo.affixinfo := !Blank(check := ini.settings["affix-info"]) ? (!vars.poe_version && check = 2 ? 0 : check) : (!vars.poe_version && ini.settings["enable item-levels"] ? 0 : 1)
+	; The local unique table and PoE1 modifier database use English item/mod names.
+	settings.iteminfo.dust := (vars.poe_version || settings.general.lang_client != "english") ? 0 : (!Blank(check := ini.settings["show disenchant efficiency"]) ? check : 1)
+	dust_constants := Iteminfo_DustConstants()
+	settings.iteminfo.dust_seconds := !Blank(check := ini.settings["disenchant ilvl84 seconds"]) && IsNumber(check) && (check > 0) ? Round(check) : dust_constants.ilvl84_seconds
 
 	settings.iteminfo.rules := {}
 	;settings.iteminfo.rules.res_weapons := (settings.general.lang_client != "english") ? 0 : !Blank(check := ini.settings["weapon res override"]) ? check : 0
@@ -284,6 +288,8 @@ Iteminfo(refresh := 0) ; refresh: 1 to refresh it normally, 2 for clipboard pars
 	{
 		Iteminfo_Stats() ;calculate data related to base-stats (defenses)
 		Iteminfo_Mods() ;parse item's mods
+		If settings.iteminfo.dust
+			Iteminfo_Dust() ;estimate Kingsmarch dust efficiency from the parsed item and affixes
 	}
 	Iteminfo_GUI() ;use parsed data to build the tooltip
 }
@@ -324,7 +330,7 @@ Iteminfo_Stats()
 
 	For class, class_val in db.item_bases ;parse through the item-databases to get relevant information
 	{
-		If !item.itembase && !InStr(item.class, "heist") || !(settings.iteminfo.itembase || settings.iteminfo.affixinfo = 2)
+		If !item.itembase && !InStr(item.class, "heist") || !(settings.iteminfo.itembase || settings.iteminfo.affixinfo = 2 || settings.iteminfo.dust)
 			Break
 		If (item.class = class)
 		{
@@ -932,6 +938,203 @@ Iteminfo_Mods()
 	vars.iteminfo.clipboard2 := clip2
 }
 
+Iteminfo_Dust()
+{
+	local
+	global vars
+
+	item := vars.iteminfo.item
+	item.dust_mods := [], item.dust_corruption_implicits := 0, item.dust_influences := 0
+	If !item.unid && LLK_PatternMatch(item.rarity, "", [Lang_Trans("items_magic"), Lang_Trans("items_rare")],,, 0)
+		item.dust_mods := Iteminfo_DustMods(item)
+
+	For index, implicit in item.implicits
+		item.dust_corruption_implicits += InStr(implicit, Lang_Trans("items_implicit_vaal")) ? 1 : 0
+	clipboard_lines := "`r`n" vars.iteminfo.clipboard "`r`n"
+	For index, influence in ["items_shaper", "items_elder", "items_crusader", "items_redeemer", "items_hunter", "items_warlord"]
+		item.dust_influences += InStr(clipboard_lines, "`r`n" Lang_Trans(influence) "`r`n", 1) ? 1 : 0
+
+	dust := EstimateDust(item)
+	If !dust.supported
+	{
+		item.dust := dust
+		Return
+	}
+	time := EstimateDisenchantTime(item), per_hour := CalculateDustPerHour(dust.value, time.seconds)
+	item.dust := {"supported": 1, "estimated_dust": dust.value, "estimated_seconds": time.seconds, "per_hour": per_hour
+	, "displayed": (dust.approximate || time.approximate ? "~" : "") FormatDustPerHour(per_hour), "approximate": dust.approximate || time.approximate
+	, "matched_mods": dust.matched_mods, "unmatched_mods": dust.unmatched_mods, "corruption_implicits": item.dust_corruption_implicits
+	, "influences": item.dust_influences, "item_level_factor": dust.item_level_factor}
+}
+
+Iteminfo_DustConstants()
+{
+	local
+	static constants := {"minimum_item_level": 65, "maximum_item_level": 84, "item_level_steps": 20
+	, "unique_multiplier": 125, "rare_magic_multiplier": 1.25, "quality_bonus_per_percent": 0.02
+	, "corruption_implicit_bonus": 0.5, "influence_bonus": 0.5, "ilvl84_seconds": 118
+	, "mod_value_floor": 3, "mod_level_offset": 2, "mod_level_scale": 4/3}
+
+	Return constants
+}
+
+Iteminfo_DustItemLevelFactor(item_level)
+{
+	local
+
+	constants := Iteminfo_DustConstants()
+	Return Max(1, Min(item_level, constants.maximum_item_level) - constants.minimum_item_level + 1)
+}
+
+EstimateDust(item)
+{
+	local
+	global db
+
+	result := {"supported": 0, "approximate": 1, "matched_mods": 0, "unmatched_mods": 0}
+	If item.unid
+	{
+		result.reason := "unidentified"
+		Return result
+	}
+	If (item.rarity = Lang_Trans("items_normal"))
+	{
+		result.reason := "normal items have no supported dust contribution"
+		Return result
+	}
+
+	constants := Iteminfo_DustConstants(), item_level_factor := Iteminfo_DustItemLevelFactor(item.ilvl)
+	; Items without a quality line leave this field blank, which propagates through AHK v1 arithmetic instead of behaving as zero.
+	quality := IsNumber(item.quality) ? item.quality : 0
+	increased := 1 + (quality * constants.quality_bonus_per_percent) + (item.dust_corruption_implicits * constants.corruption_implicit_bonus) + (item.dust_influences * constants.influence_bonus)
+	If (item.rarity = Lang_Trans("items_unique"))
+	{
+		If !IsObject(db.item_dust)
+			DB_Load("item_dust")
+		name := StrReplace(StrReplace(item.name, "foulborn "), "&&", "&")
+		If !db.item_dust.HasKey(name)
+		{
+			result.reason := "unique not present in local dust table"
+			Return result
+		}
+		; Since 3.26, tested unique yield is base * 125 * ilvl-factor. Quality, corruption implicits, and influences are additive.
+		result.value := Round(db.item_dust[name] * constants.unique_multiplier * item_level_factor * increased)
+		result.supported := 1, result.approximate := 0, result.item_level_factor := item_level_factor
+		Return result
+	}
+
+	If !LLK_PatternMatch(item.rarity, "", [Lang_Trans("items_magic"), Lang_Trans("items_rare")],,, 0)
+	{
+		result.reason := "unsupported rarity"
+		Return result
+	}
+
+	base_value := 0
+	For index, mod in item.dust_mods
+		If IsNumber(mod.level)
+			base_value += Iteminfo_DustModValue(mod.level), result.matched_mods += 1
+		Else result.unmatched_mods += 1
+	If !result.matched_mods
+	{
+		result.reason := "no explicit modifiers matched"
+		Return result
+	}
+
+	; Rare/magic values are an approximation fitted to measured required-level contributions. Rarity itself adds no multiplier.
+	result.value := Round(base_value * constants.rare_magic_multiplier * item_level_factor * increased)
+	result.supported := 1, result.item_level_factor := item_level_factor
+	Return result
+}
+
+EstimateDisenchantTime(item)
+{
+	local
+	global settings
+
+	; Calibrate this with the in-game duration for one ilvl 84 item. Item level is the only known item-side duration factor.
+	constants := Iteminfo_DustConstants(), item_level_factor := Iteminfo_DustItemLevelFactor(item.ilvl)
+	Return {"seconds": Max(1, Round(settings.iteminfo.dust_seconds * item_level_factor / constants.item_level_steps)), "approximate": 1}
+}
+
+CalculateDustPerHour(dust, seconds)
+{
+	local
+
+	Return (seconds > 0) ? Round(dust * 3600 / seconds) : 0
+}
+
+FormatDustPerHour(value)
+{
+	local
+
+	If (value < 1000)
+		Return Round(value)
+	If (value < 10000)
+		Return RegExReplace(Format("{:0.1f}", value / 1000), "\.0$") "k"
+	If (value < 1000000)
+		Return Round(value / 1000) "k"
+	If (value < 10000000)
+		Return RegExReplace(Format("{:0.1f}", value / 1000000), "\.0$") "m"
+	Return Round(value / 1000000) "m"
+}
+
+Iteminfo_DustModValue(level)
+{
+	local
+
+	; Community samples closely fit ~4/3 dust-value per modifier minimum level, with a floor for low-level mods.
+	constants := Iteminfo_DustConstants()
+	Return Max(constants.mod_value_floor, Round((level - constants.mod_level_offset) * constants.mod_level_scale))
+}
+
+Iteminfo_DustMods(item)
+{
+	local
+	global vars
+
+	mods := []
+	Loop, Parse, % vars.iteminfo.clipboard2, |
+	{
+		If !A_LoopField
+			Continue
+		name := SubStr(A_LoopField, InStr(A_LoopField, """",,, 1) + 1, InStr(A_LoopField, """",,, 2) - InStr(A_LoopField, """",,, 1) - 1)
+		mods.Push({"name": name, "level": Iteminfo_ModLevel(A_LoopField, item)})
+	}
+	Return mods
+}
+
+Iteminfo_ModLevel(affix, item)
+{
+	local
+	global db
+
+	If (item.class = "base jewels")
+		Return
+	mod := SubStr(affix, InStr(affix, "`n") + 1)
+	While InStr(mod, "`n(")
+		parse := SubStr(mod, InStr(mod, "`n(")), parse := SubStr(parse, 1, InStr(parse, ")")), mod := StrReplace(mod, parse)
+	name := SubStr(affix, InStr(affix, """",,, 1) + 1, InStr(affix, """",,, 2) - InStr(affix, """",,, 1) - 1)
+	affix_type := InStr(affix, " Prefix Modifier ") ? "prefix" : "?", affix_type := InStr(affix, " Suffix Modifier ") ? "suffix" : affix_type
+	search_class := InStr(item.class, " Flasks") ? "flasks" : IsObject(item.cluster) ? "cluster jewels" : item.class
+	If !IsObject(db.item_mods)
+		DB_Load("item_mods")
+
+	For key, val in db.item_mods[db.item_mods.HasKey(search_class) ? search_class : "universal"]
+		If (val.affix = name) && (val.type = affix_type)
+		{
+			For index, text in val.texts
+				If !InStr(mod, text)
+					Continue 2
+
+			tag_check := 0
+			For index, tag in item.tags
+				If LLK_HasVal(val.tags, tag, 1)
+					tag_check += 1
+			If tag_check
+				Return val.level
+		}
+}
+
 Iteminfo_Mods2()
 {
 	local
@@ -1012,6 +1215,12 @@ Iteminfo_GUI()
 			vars.pics.iteminfo.damage := LLK_ImageCache("img\GUI\item info\damage.png",, UI.hSegment - 2)
 		Gui, %GUI_name%: Add, Picture, % "ys Border Center BackgroundTrans", % "HBitmap:*" vars.pics.iteminfo.damage ;total-dps icon
 		Gui, %GUI_name%: Add, Text, % "ys Center Border w"UI.wSegment " h"UI.hSegment, % (item.dps.total < 1000) ? Format("{:0.1f}", item.dps.total) : Format("{:0.0f}", item.dps.total) ;total-dps text
+	}
+
+	If settings.iteminfo.dust && IsObject(item.dust) && item.dust.supported
+	{
+		Gui, %GUI_name%: Add, Text, % "xs Section Border Center BackgroundTrans cFFD27F w" UI.wSegment*UI.segments " h" UI.hSegment, % "DUST/H " item.dust.displayed
+		Gui, %GUI_name%: Add, Progress, % "xp yp wp hp Disabled Border BackgroundBlack", 0
 	}
 
 	;///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1440,28 +1649,8 @@ Iteminfo_GUI()
 		If (settings.iteminfo.affixinfo = 2) && (item.class != "base jewels") ;if item-levels are enabled, look them up in the databases
 		{
 			ilvl := "??" ;set placeholder ilvl
-			If !IsObject(db.item_mods)
-				DB_Load("item_mods")
-
 			If !vars.poe_version
-				For key, val in db.item_mods[db.item_mods.HasKey(search_class) ? search_class : "universal"]
-					If (val.affix = name) && (val.type = affix_type)
-					{
-						For index, text in val.texts ; to avoid ambiguity, also check if the mod-texts match
-							If !InStr(mod, text)
-								Continue 2
-
-						tag_check := 0
-						For index, tag in item.tags ; to avoid ambiguity, also check if the tags match
-							If LLK_HasVal(val.tags, tag, 1)
-								tag_check += 1
-
-						If !tag_check
-							Continue
-
-						ilvl := val.level
-						Break
-					}
+				ilvl := Iteminfo_ModLevel(outer_loopfield, item)
 		}
 		mod := StrReplace(mod, Lang_Trans("mods_cluster_passive", 2) " "), mod := StrReplace(mod, Lang_Trans("mods_cluster_passive", 3) " ") ;trim cluster-jewel mod-texts
 

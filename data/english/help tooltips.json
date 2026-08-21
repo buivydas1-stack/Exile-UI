@@ -459,6 +459,14 @@
         "it also shows the base-percentile roll and ilvl, highlighting good values"
       ]
     ],
+    "iteminfo dust": [
+      "shows an estimated Kingsmarch Thaumaturgic Dust per hour value in the item tooltip",
+      "rare and magic values are approximate; unique base values are bundled locally"
+    ],
+    "iteminfo dust seconds": [
+      "your in-game disenchant time in seconds for one item-level 84 item",
+      "use this to calibrate the estimate to your current workers; the default is 118 seconds"
+    ],
     "iteminfo marking global": [
       "colors used to highlight globally (un)desired mods",
       "click a box to open the color-palette, right click to reset"

@@ -2407,6 +2407,19 @@ Settings_iteminfo()
 		Gui, %GUI%: Add, Progress, % "Disabled xp yp wp hp Border HWNDhwnd1 Background" vars.settings.cButtons2 " c" vars.settings.cButtons, 100
 		vars.hwnd.settings.itembase := hwnd, vars.hwnd.help_tooltips["settings_iteminfo base-info"] := hwnd1
 	}
+	If !vars.poe_version && (settings.general.lang_client = "english")
+	{
+		Gui, %GUI%: Add, Text, % "xs Section Border BackgroundTrans gSettings_iteminfo2 HWNDhwnd" (settings.iteminfo.dust ? " cLime" : " cGray"), % " " Lang_Trans("m_iteminfo_dust") " "
+		Gui, %GUI%: Add, Progress, % "Disabled xp yp wp hp Border HWNDhwnd1 Background" vars.settings.cButtons2 " c" vars.settings.cButtons, 100
+		vars.hwnd.settings.dust := hwnd, vars.hwnd.help_tooltips["settings_iteminfo dust"] := hwnd1
+
+		Gui, %GUI%: Add, Text, % "ys x+-1 Border Right HWNDhwnd0", % " " Lang_Trans("m_iteminfo_dusttime") " "
+		Gui, %GUI%: Font, % "s" settings.general.fSize - 4
+		Gui, %GUI%: Add, Text, % "ys x+-1 w" settings.general.fWidth*4 " hp Border BackgroundTrans"
+		Gui, %GUI%: Add, Edit, % "xp yp wp hp Border Center cBlack Number Limit4 gSettings_iteminfo2 HWNDhwnd", % settings.iteminfo.dust_seconds
+		Gui, %GUI%: Font, % "s" settings.general.fSize
+		vars.hwnd.settings.dust_seconds := hwnd, vars.hwnd.help_tooltips["settings_iteminfo dust seconds"] := hwnd0, vars.hwnd.help_tooltips["settings_iteminfo dust seconds|"] := hwnd
+	}
 
 	Gui, %GUI%: Font, bold underline
 	Gui, %GUI%: Add, Text, % "Section xs Center BackgroundTrans y+"vars.settings.spacing, % Lang_Trans("global_ui")
@@ -2634,6 +2647,20 @@ Settings_iteminfo2(cHWND)
 		IniWrite, % (settings.iteminfo.itembase := !settings.iteminfo.itembase), % "ini" vars.poe_version "\item-checker.ini", settings, enable base-info
 		GuiControl, % "+c" (settings.iteminfo.itembase ? "Lime" : "Gray"), % cHWND
 		GuiControl, % "movedraw", % cHWND
+	}
+	Else If (check = "dust")
+	{
+		IniWrite, % (settings.iteminfo.dust := !settings.iteminfo.dust), % "ini" vars.poe_version "\item-checker.ini", settings, show disenchant efficiency
+		GuiControl, % "+c" (settings.iteminfo.dust ? "Lime" : "Gray"), % cHWND
+		GuiControl, % "movedraw", % cHWND
+	}
+	Else If (check = "dust_seconds")
+	{
+		value := LLK_ControlGet(cHWND)
+		If !IsNumber(value) || (value < 1)
+			Return
+		settings.iteminfo.dust_seconds := Round(value)
+		IniWrite, % settings.iteminfo.dust_seconds, % "ini" vars.poe_version "\item-checker.ini", settings, disenchant ilvl84 seconds
 	}
 	Else If InStr(check, "affixinfo_")
 	{

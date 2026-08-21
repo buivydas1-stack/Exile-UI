@@ -74,6 +74,8 @@ DB_Load(database)
 		db.item_bases := Json.Load(LLK_FileRead("data\global\item bases" vars.poe_version ".json", 1))
 	Else If (database = "item_drops")
 		db.item_drops := Json.Load(LLK_FileRead("data\global\item drop-tiers" vars.poe_version ".json"))
+	Else If (database = "item_dust")
+		db.item_dust := Json.Load(LLK_FileRead("data\global\item dust.json"))
 	Else If (database = "anoints")
 	{
 		db.anoints := Json.Load(LLK_FileRead("data\" (FileExist("data\" settings.general.lang_client "\anoints" vars.poe_version ".json") ? settings.general.lang_client : "english") "\anoints" vars.poe_version ".json", 1, "65001"))

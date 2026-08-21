@@ -854,7 +854,8 @@ AsyncTradeReprice(mode := "", tooltip := "")
 			}
 			If !vars.poe_version && (mode = "sell") && (array.1 = 1) && (array.2 = "alt")
 			{
-				LLK_ToolTip("minimum price: 1 alteration",,,,, "Yellow")
+				Sleep, 100
+				SendInput, ^{LButton}
 				Return
 			}
 			Sleep, 100
@@ -1054,6 +1055,16 @@ AsyncTradePriceTarget(amount, currency, minchange, ByRef target_amount, ByRef ta
 	global vars
 
 	target_amount := target_currency := error := "", amount += 0
+	If (currency = "alt") && (amount > 1) && (amount <= 5)
+	{
+		target_amount := (amount <= 3) ? 1 : 3, target_currency := currency
+		Return 1
+	}
+	If (currency = "chaos") && (amount = 1)
+	{
+		target_amount := 5, target_currency := "alt"
+		Return 1
+	}
 	If (amount > 1)
 	{
 		AsyncTradePriceStep(amount, minchange, target_amount, reduction)

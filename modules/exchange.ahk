@@ -860,7 +860,8 @@ AsyncTradeReprice(mode := "", tooltip := "")
 			}
 			Sleep, 20
 			SendInput, {RButton}
-			If !vars.poe_version && (mode = "sell")
+			; PoE2 uses the direct path when the currency stays unchanged. One-unit conversions keep the stock pricing panel because its currency selector has separate UI geometry.
+			If AsyncTradeCanDirectReprice(vars.poe_version, mode, array.1)
 			{
 				Sleep, 60
 				If !AsyncTradePriceTarget(array.1, array.2, settings.async.minchange, price_new, currency_new, error)
@@ -1047,6 +1048,13 @@ AsyncTradeReprice(mode := "", tooltip := "")
 		Gui, %GUI_name%: Show, % "NA x" xPos " y" yPos
 		LLK_Overlay(hwnd_pricing, "show",, GUI_name), LLK_Overlay(hwnd_old, "destroy")
 	}
+}
+
+AsyncTradeCanDirectReprice(poe_version, mode, amount)
+{
+	local
+
+	Return (mode = "sell") && (!poe_version || amount > 1)
 }
 
 AsyncTradePriceTarget(amount, currency, minchange, ByRef target_amount, ByRef target_currency, ByRef error)

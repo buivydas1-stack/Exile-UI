@@ -100,7 +100,7 @@ Init_hotkeys(), LLK_Log("initialized hotkey settings")
 Resolution_check()
 
 SetTimer, Loop, 1000
-SetTimer, Loop_main, 50
+SetTimer, Loop_main, 100
 
 vars.system.timeout := 0
 LLK_Log("waiting for focus on client-window...")
@@ -776,17 +776,17 @@ Loop()
 		If vars.general.MultiThreading && !WinExist(vars.general.bThread)
 			LLK_Error("Secondary thread has crashed, the tool needs to be restarted`n`nIf this is a recurring issue, disable multi-threading in the <general> settings", 1)
 
-		If (vars.news.unread || vars.update.1 || vars.actdecoder.updater.available) && (WinExist("ahk_id " vars.hwnd.radial.main) || WinExist("ahk_id " vars.hwnd.settings.main)
+		If (vars.news.unread || (vars.poe_version && vars.update.1) || vars.actdecoder.updater.available) && (WinExist("ahk_id " vars.hwnd.radial.main) || WinExist("ahk_id " vars.hwnd.settings.main)
 			|| vars.actdecoder.tab && WinExist("ahk_id " vars.hwnd.actdecoder.main))
 		{
 			news_tick += 1
 			If (Blank(vars.radial.click_select) || vars.radial.click_select = "settings") && WinExist("ahk_id " vars.hwnd.radial.main)
-				GuiControl, % "+c" (Mod(news_tick, 2) ? "Black" : (vars.update.1 < 0 ? "Red" : "Lime")), % vars.hwnd.radial.settings
+				GuiControl, % "+c" (Mod(news_tick, 2) ? "Black" : (vars.poe_version && vars.update.1 < 0 ? "Red" : "Lime")), % vars.hwnd.radial.settings
 			If WinExist("ahk_id " vars.hwnd.settings.main)
 			{
 				If vars.news.unread
 					GuiControl, % "+Background" (Mod(news_tick, 2) ? "Black" : "Lime"), % vars.hwnd.settings.background_news
-				If vars.update.1
+				If vars.poe_version && vars.update.1
 					GuiControl, % "+Background" (Mod(news_tick, 2) ? "Black" : (vars.update.1 < 0 ? "Red" : "Lime")), % vars.hwnd.settings.background_updater
 				If vars.actdecoder.updater.available
 				{
@@ -826,14 +826,12 @@ Loop_main()
 {
 	local
 	global vars, settings, json
-	static tick_helptooltips := 0, ClientFiller_count := 0, priceindex_count := 0, tick_recombination := 0, stashhover := {}, tick := 0
+	static tick_helptooltips := 0, ClientFiller_count := 0, priceindex_count := 0, tick_recombination := 0, stashhover := {}, tick := 0, comms_last, comms_object
 
 	Critical
-	tick += 1
+	tick += 2
 
 	MouseHover()
-	If Mod(tick, 2)
-		Return
 
 	If !Mod(tick, 10) && !vars.radial.wait && vars.hwnd.radial.main && !vars.radial.click_select && WinExist("ahk_id " vars.hwnd.radial.main)
 	&& !(LLK_IsBetween(vars.general.xMouse, vars.radial.window.x1, vars.radial.window.x2) && LLK_IsBetween(vars.general.yMouse, vars.radial.window.y1, vars.radial.window.y2))
@@ -844,8 +842,12 @@ Loop_main()
 		WinGetText, comms_text, % vars.general.bThread
 		If !(Blank(comms_text) || ErrorLevel)
 		{
-			comms_object := json.Load(comms_text), vars.pixels := comms_object.pixels.Clone()
-			If !Mod(tick, 10) && (vars.settings.active = "clone-frames") && vars.hwnd.settings.fps && (vars.cloneframes.list.Count() > 1)
+			If (comms_text != comms_last)
+			{
+				comms_object := json.Load(comms_text), vars.pixels := comms_object.pixels.Clone()
+				comms_last := comms_text
+			}
+			If IsObject(comms_object) && IsNumber(comms_object["clone-speed"]) && !Mod(tick, 10) && (vars.settings.active = "clone-frames") && vars.hwnd.settings.fps && (vars.cloneframes.list.Count() > 1)
 			{
 				GuiControl, Text, % vars.hwnd.settings.fps, % " " (fps := Round(comms_object["clone-speed"]))
 				GuiControl, % "+c" (fps <= settings.cloneframes.fps * 0.75 ? "Red" : fps < settings.cloneframes.fps ? "Yellow" : "lime"), % vars.hwnd.settings.fps

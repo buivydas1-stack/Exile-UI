@@ -15,6 +15,16 @@ result := EstimateDust(unique)
 DustTest_Near("unique dust", result.value, 26250, 0)
 DustTest_Near("unique duration", EstimateDisenchantTime(unique).seconds, 715, 0)
 
+jewel_classes := ["Jewels", "Abyss Jewels", "Cluster Jewels", "Charm Jewels", "base jewels"]
+For index, class in jewel_classes
+{
+	jewel := {"class": class, "rarity": "rare", "ilvl": 85, "quality": 0, "dust_corruption_implicits": 0
+	, "dust_influences": 0, "dust_mods": [{"level": 72}]}
+	result := EstimateDust(jewel)
+	DustTest_Equal("jewel unsupported " class, result.supported, 0)
+	DustTest_Equal("jewel reason " class, result.reason, "jewels cannot be disenchanted")
+}
+
 levels := [72, 23, 23, 21, 1, 81]
 expected_dust := [2579, 2821, 3063, 3277, 3363, 7367]
 expected_seconds := [425, 510, 595, 680, 765, 850]
@@ -52,22 +62,14 @@ corrupted := base.Clone(), corrupted.dust_corruption_implicits := 1
 DustTest_Near("corruption implicit", EstimateDust(corrupted).value / EstimateDust(base).value, 1.5, 0.001)
 
 tier_colors := ["00FF00", "006600", "FFFF00", "FF8000", "FF3333", "990000", "00FFFF"], tier_colors[0] := "3399ff"
-hour_color_cases := [[39999, "990000", "White"], [40000, "FF8000", "Black"], [59999, "FF8000", "Black"]
-, [60000, "00FF00", "Black"], [99999, "00FF00", "Black"], [100000, "White", "Black"]]
+hour_color_cases := [[0, "990000", "White"], [40000, "990000", "White"], [49999, "990000", "White"]
+, [50000, "FF8000", "Black"], [59999, "FF8000", "Black"], [60000, "00FF00", "Black"]
+, [99999, "00FF00", "Black"], [100000, "White", "Black"], [150000, "White", "Black"]]
 For index, test in hour_color_cases
 {
-	color := Iteminfo_DustColor(test[1], "hour", tier_colors)
+	color := Iteminfo_DustColor(test[1], tier_colors)
 	DustTest_Equal("dust hour color background " index, color.background, test[2])
 	DustTest_Equal("dust hour color text " index, color.text, test[3])
-}
-
-slot_color_cases := [[3999, "990000", "White"], [4000, "FF8000", "Black"], [7999, "FF8000", "Black"]
-, [8000, "00FF00", "Black"], [19999, "00FF00", "Black"], [20000, "White", "Black"]]
-For index, test in slot_color_cases
-{
-	color := Iteminfo_DustColor(test[1], "slot", tier_colors)
-	DustTest_Equal("dust slot color background " index, color.background, test[2])
-	DustTest_Equal("dust slot color text " index, color.text, test[3])
 }
 
 DustTest_Near("dust per slot", CalculateDustPerSlot(60000, 8), 7500, 0)

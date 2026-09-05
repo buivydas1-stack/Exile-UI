@@ -25,6 +25,11 @@ EstimateDust(item)
 	global db
 
 	result := {"supported": 0, "approximate": 1, "matched_mods": 0, "unmatched_mods": 0}
+	If InStr(item.class, "jewel")
+	{
+		result.reason := "jewels cannot be disenchanted"
+		Return result
+	}
 	If item.unid
 	{
 		result.reason := "unidentified"
@@ -149,16 +154,16 @@ Iteminfo_DustSlots(item)
 	Return default_slots[class_id]
 }
 
-Iteminfo_DustColor(value, metric, tier_colors)
+Iteminfo_DustColor(per_hour, tier_colors)
 {
 	local
 
-	thresholds := (metric = "slot") ? [4000, 8000, 20000] : [40000, 60000, 100000]
-	If (value < thresholds.1)
+	; The whole Dust strip is rated by hourly yield only; Dust/slot is informational.
+	If (per_hour < 50000)
 		Return {"background": tier_colors.6, "text": "White"}
-	If (value < thresholds.2)
+	If (per_hour < 60000)
 		Return {"background": tier_colors.4, "text": "Black"}
-	If (value < thresholds.3)
+	If (per_hour < 100000)
 		Return {"background": tier_colors.1, "text": "Black"}
 	Return {"background": "White", "text": "Black"}
 }

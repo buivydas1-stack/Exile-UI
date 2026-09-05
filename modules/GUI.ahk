@@ -1149,16 +1149,16 @@ ToolTip_Mouse(mode := "", timeout := 0)
 {
 	local
 	global vars, settings
-	static name, start
+	static name, start, xLast, yLast
 
 	If mode
 	{
 		If (mode = "reset")
-			name := "", start := ""
+			name := "", start := "", xLast := "", yLast := ""
 		Else
 		{
-			vars.tooltip_mouse := {"name": mode, "timeout": timeout}
-			SetTimer, ToolTip_Mouse, 10
+			vars.tooltip_mouse := {"name": mode, "timeout": timeout}, xLast := "", yLast := ""
+			SetTimer, ToolTip_Mouse, 30
 		}
 		Return
 	}
@@ -1197,7 +1197,7 @@ ToolTip_Mouse(mode := "", timeout := 0)
 	If vars.tooltip_mouse.timeout && WinActive("ahk_group poe_window") && IsNumber(start) && (A_TickCount >= start + 1000) || GetKeyState("ESC", "P") && (name != "killtracker") || !vars.tooltip_mouse
 	{
 		Gui, tooltip_mouse: Destroy
-		vars.hwnd.Delete("tooltip_mouse"), name := "", start := "", vars.tooltip_mouse := ""
+		vars.hwnd.Delete("tooltip_mouse"), name := "", start := "", xLast := "", yLast := "", vars.tooltip_mouse := ""
 		SetTimer, ToolTip_Mouse, Delete
 		Return
 	}
@@ -1212,9 +1212,12 @@ ToolTip_Mouse(mode := "", timeout := 0)
 		Gui, tooltip_mouse: Font, % "s"settings.general.fSize " cWhite", % vars.system.font
 		Gui, tooltip_mouse: Add, Text, % "HWNDhwnd1"(vars.tooltip_mouse.name = "searchstring" ? " w"settings.general.fWidth*14 : ""), % text
 		vars.hwnd.tooltip_mouse := {"main": hwnd, "text": hwnd1}
+		redraw := 1
 	}
 
 	name := vars.tooltip_mouse.name
 	MouseGetPos, xPos, yPos
-	Gui, tooltip_mouse: Show, % "NA x"xPos + settings.general.fWidth*3 " y"yPos
+	If redraw || (xPos != xLast) || (yPos != yLast)
+		Gui, tooltip_mouse: Show, % "NA x"xPos + settings.general.fWidth*3 " y"yPos
+	xLast := xPos, yLast := yPos
 }

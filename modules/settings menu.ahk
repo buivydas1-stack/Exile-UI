@@ -6901,6 +6901,8 @@ Settings_updater2(cHWND := "")
 	If in_progress
 		Return
 	check := LLK_HasVal(vars.hwnd.settings, cHWND), control := SubStr(check, InStr(check, "_") + 1)
+	If UpdateCustomBlocked(check)
+		Return
 	If InStr(check, "githubpage_")
 		Run, % "https://github.com/Lailloken/Exile-UI/tree/"control
 	Else If (check = "releases_page")

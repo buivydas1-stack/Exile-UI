@@ -1103,20 +1103,16 @@ Iteminfo_GUI()
 
 	If settings.iteminfo.dust && IsObject(item.dust) && item.dust.supported
 	{
-		dust_hour_color := Iteminfo_DustColor(item.dust.per_hour, "hour", settings.iteminfo.colors_tier)
+		dust_color := Iteminfo_DustColor(item.dust.per_hour, settings.iteminfo.colors_tier), dust_width := UI.wSegment*UI.segments
+		dust_hour_width := item.dust.slots ? Round(dust_width*0.65) : dust_width
+		Gui, %GUI_name%: Add, Text, % "xs Section Center 0x200 BackgroundTrans c" dust_color.text " w" dust_hour_width " h" UI.hSegment, % "DUST/H " item.dust.displayed
 		If item.dust.slots
 		{
-			dust_slot_color := Iteminfo_DustColor(item.dust.per_slot, "slot", settings.iteminfo.colors_tier), dust_width := UI.wSegment*UI.segments/2
-			Gui, %GUI_name%: Add, Text, % "xs Section Border Center BackgroundTrans c" dust_slot_color.text " w" dust_width " h" UI.hSegment, % "DUST/SLOT " item.dust.displayed_slot
-			Gui, %GUI_name%: Add, Progress, % "xp yp wp hp Disabled Border BackgroundBlack c" dust_slot_color.background, 100
-			Gui, %GUI_name%: Add, Text, % "ys Border Center BackgroundTrans c" dust_hour_color.text " w" dust_width " h" UI.hSegment, % "DUST/H " item.dust.displayed
-			Gui, %GUI_name%: Add, Progress, % "xp yp wp hp Disabled Border BackgroundBlack c" dust_hour_color.background, 100
+			Gui, %GUI_name%: Font, % "s" Max(6, settings.iteminfo.fSize - 2)
+			Gui, %GUI_name%: Add, Text, % "x+0 ys Center 0x200 BackgroundTrans c" dust_color.text " w" dust_width - dust_hour_width " h" UI.hSegment, % "(" item.dust.displayed_slot "/slot)"
+			Gui, %GUI_name%: Font, % "s" settings.iteminfo.fSize
 		}
-		Else
-		{
-			Gui, %GUI_name%: Add, Text, % "xs Section Border Center BackgroundTrans c" dust_hour_color.text " w" UI.wSegment*UI.segments " h" UI.hSegment, % "DUST/H " item.dust.displayed
-			Gui, %GUI_name%: Add, Progress, % "xp yp wp hp Disabled Border BackgroundBlack c" dust_hour_color.background, 100
-		}
+		Gui, %GUI_name%: Add, Progress, % "xs ys w" dust_width " h" UI.hSegment " Disabled Border BackgroundBlack c" dust_color.background, 100
 	}
 
 	;///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

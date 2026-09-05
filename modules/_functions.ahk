@@ -607,11 +607,26 @@ StringSend(ByRef string, ByRef WindowTitle := "") ;based on example #4 on https:
 	Return (ErrorLevel = "FAIL" ? 0 : ErrorLevel)
 }
 
+UpdateCustomBlocked(action)
+{
+	local
+	global vars
+
+	; Protect the customized PoE1 install; PoE2 keeps its existing updater behavior.
+	If vars.poe_version || !(action = "install" || InStr(action, "get_") || InStr(action, "restart_install") || action = "manual" || action = "github")
+		Return 0
+	MsgBox, 262192, Exile-UI - Custom Justinas Version, % "This is a custom Justinas version of Exile-UI.`n`nUpdating to upstream would overwrite your customizations.`n`nThe update has been blocked. Your custom version has not been changed."
+	Return 1
+}
+
 UpdateCheck(timer := 0) ;checks for updates: timer param refers to whether this function was called via the timer or during script-start
 {
 	local
 	global vars, settings, Json
 
+	; Also block a previously queued install before any update files are touched.
+	If (timer = 2) && UpdateCustomBlocked("install")
+		Return
 	vars.update := [0], update := vars.update
 
 	If !FileExist("update\")

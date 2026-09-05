@@ -137,7 +137,10 @@ Loop()
 				vars.pixels[pixel] := Screenchecks_PixelSearch(pixel)
 			Else vars.pixels[pixel] := 0
 
-	If vars.pixels.Count() && ((check := json.dump({"clone-speed": Round(1000/vars.cloneframes.ms), "pixels": vars.pixels.Clone()})) != comms_last)
+	comms := {"pixels": vars.pixels.Clone()}
+	If (vars.settings.active = "clone-frames") && IsNumber(vars.cloneframes.ms) && vars.cloneframes.ms
+		comms["clone-speed"] := Round(1000/vars.cloneframes.ms)
+	If vars.pixels.Count() && ((check := json.dump(comms)) != comms_last)
 	{
 		GuiControl, Text, % vars.hwnd.comms, % StrReplace(StrReplace(check, "{""", "{`n"""), """,""", """,`n""")
 		comms_last := check

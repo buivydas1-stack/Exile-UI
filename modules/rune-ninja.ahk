@@ -37,42 +37,13 @@ Runeshape_OCR()
 	local
 	global vars, settings, JSON
 
-	start := A_TickCount, cont := (settings.general.input_method = 2)
-	Gui, ocr_comms: New, -DPIScale -Caption +LastFound +AlwaysOnTop +ToolWindow +Border, % "Exile UI: OCR"
-	WinSet, Trans, 1
-	Gui, ocr_comms: Add, Text,, % "client: " vars.hwnd.poe_client "|" vars.client.h
-	. "`nclip: " Round(vars.client.h * (cont ? 19/120 : 1/8)) "|" Round(vars.client.h * (cont ? 23/96 : 11/80)) "|" Round(vars.client.h * (cont ? 25/72 : 17/45)) "|" Round(vars.client.h * 0.52) "`n"
-	. (settings.general.blackbars ? "blackbars: " vars.client.x - vars.monitor.x "|0|" vars.client.w "|" vars.client.h "`n" : "")
-	. "`nruneshaping" . (settings.runeshaping.debug ? "`ndebug" : "") . (settings.general.lang_client = "english" ? "`nenglish" : "") . (cont ? "`ncontroller" : "")
-	Gui, ocr_comms: Show, NA x10000 y10000
+	start := A_TickCount, cont := (settings.general.input_method = 2), vars.runeshaping := {"text": []}
+	x := Round(vars.client.h * (cont ? 19/120 : 1/8)), y := Round(vars.client.h * (cont ? 23/96 : 11/80)), w := Round(vars.client.h * (cont ? 25/72 : 17/45)), h := Round(vars.client.h * 0.52)
 
-	vars.runeshaping := {"text": []}, vars.ocr_comms := {}
-	Run, % """" A_AhkPath """ """ A_ScriptDir "\modules\_ocr thread.ahk""", % A_ScriptDir, UseErrorLevel
-
-	If ErrorLevel
-	{
-		LLK_ToolTip(Lang_Trans("ocr_fail"), 2,,,, "Red")
-		Gui, ocr_comms: Destroy
+	text := OCR_Start(x, y, w, h, (settings.runeshaping.debug ? "ALT" : ""), "runeshaping", (cont ? ["controller"] : ""))
+	If !text
 		Return
-	}
-	Else If !(settings.runeshaping.debug && GetKeyState("ALT", "P"))
-		While !ocr_failed && Blank(vars.ocr_comms.text)
-		{
-			If (A_TickCount >= start + 1000)
-				ocr_failed := 1
-			Sleep 25
-		}
 
-	If ocr_failed || (vars.ocr_comms.text = "OCR failed") || settings.runeshaping.debug && GetKeyState("ALT", "P")
-	{
-		WinWaitClose, OCR debug
-		If (vars.ocr_comms.text = "OCR failed") || !GetKeyState("ALT", "P")
-			LLK_ToolTip(Lang_Trans("global_fail"), 1,,,, "Red")
-		KeyWait, ALT
-		Gui, ocr_comms: Destroy
-		Return
-	}
-	text := vars.ocr_comms.text, text := SubStr(text, InStr(text, "`n") + 1)
 	While InStr(text, "  ")
 		text := StrReplace(text, "  ", " ")
 	Loop, Parse, text, % "`n", % "`r`t' "
@@ -89,7 +60,6 @@ Runeshape_OCR()
 			object.stack := "?", line := SubStr(line, InStr(line, "x ") + 2)
 		object.line := line, vars.runeshaping.text.Push(object)
 	}
-	Gui, ocr_comms: Destroy
 	Runeshape_GUI()
 }
 

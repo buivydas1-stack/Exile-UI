@@ -228,9 +228,7 @@ A light-weight AHK overlay with UI and QoL features for Path of Exile 1 and 2, e
 
 - `act-tracker` has a default guide and PoB-import features that were originally derived from [exile-leveling](https://github.com/HeartofPhos/exile-leveling)
 
-- `stash-ninja` uses price-data provided by [poe.ninja](https://poe.ninja/)
-
-- `seed-explorer` uses a custom version of the timeless-jewel databases provided via [TimelessJewelData](https://github.com/KeshHere/TimelessJewelData)
+- `stash-ninja` and `rune-ninja` use price data provided by [poe.ninja](https://poe.ninja/)
 
 - [GDI+ Library for AutoHotkey](https://github.com/marius-sucan/AHK-GDIp-Library-Compilation), [GDI+ ImageSearch](https://github.com/MasterFocus/AutoHotkey/blob/master/Functions/Gdip_ImageSearch/Gdip_ImageSearch.ahk), [OCR with UWP API](https://www.autohotkey.com/boards/viewtopic.php?t=72674) enable advanced screen/image-related features
 

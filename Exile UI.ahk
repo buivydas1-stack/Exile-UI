@@ -85,7 +85,7 @@ Init_legion(), LLK_Log("initialized seed-explorer settings")
 Init_Lootfilter(), LLK_Log("initialized FilterSpoon settings")
 Init_macros(), LLK_Log("initialized chat-macro settings")
 Init_mapinfo(), LLK_Log("initialized map-info settings")
-Init_OCR(), LLK_Log("initialized ocr settings")
+Init_TLDR(), LLK_Log("initialized TLDR-tooltip settings")
 Init_searchstrings(), LLK_Log("initialized search-strings settings")
 Init_leveltracker(), LLK_Log("initialized act-tracker settings")
 Init_actdecoder(), LLK_Log("initialized act-decoder settings")
@@ -98,6 +98,7 @@ Init_statlas(), LLK_Log("initialized statlas settings")
 Init_Runeshape(), LLK_Log("initialized rune-ninja settings")
 Init_hotkeys(), LLK_Log("initialized hotkey settings")
 Resolution_check()
+Settings_menu("init")
 
 SetTimer, Loop, 1000
 SetTimer, Loop_main, 100
@@ -154,7 +155,6 @@ Return
 #Include modules\macros.ahk
 #Include modules\map-info.ahk
 #Include modules\map tracker.ahk
-#Include modules\ocr.ahk
 #Include modules\omni-key.ahk
 #Include modules\qol tools.ahk
 #Include modules\recombination.ahk
@@ -166,6 +166,7 @@ Return
 #Include modules\settings menu.ahk
 #Include modules\stash-ninja.ahk
 #Include modules\statlas.ahk
+#Include modules\TLDR tooltips.ahk
 #Include *i add-ons\loader
 
 Exit()
@@ -535,6 +536,11 @@ Init_general()
 	}
 
 	IniWrite, 16402, ini\config.ini, versions, ini
+	If !Blank(ini.features["enable ocr"])
+	{
+		IniWrite, % ini.features["enable ocr"], % "ini" vars.poe_version "\config.ini", features, enable tldr-tooltips
+		IniDelete, % "ini" vars.poe_version "\config.ini", features, enable ocr
+	}
 	settings.general.character := ini.settings["active character"]
 	settings.general.build := !Blank(settings.general.character) ? ini.settings["active build"] : ""
 	settings.general.dev := !Blank(check := ini.settings["dev"]) ? check : 0
@@ -567,7 +573,7 @@ Init_general()
 	settings.features.actdecoder := !Blank(check := ini.features["enable act-decoder"]) ? check : 0
 	settings.features.maptracker := !Blank(check := ini.features["enable map tracker"]) ? check : 0
 	settings.features.mapinfo := (settings.general.lang_client != "unknown") && !Blank(check := ini.features["enable map-info panel"]) ? check : 0
-	settings.features.OCR := !vars.poe_version && !Blank(check := ini.features["enable ocr"]) ? check : 0
+	settings.features.TLDR := !vars.poe_version && !Blank(check := ini.features["enable tldr-tooltips"]) ? check : 0
 	settings.features.stash := !Blank(check := ini.features["enable stash-ninja"]) ? check : 0
 	settings.features.statlas := vars.poe_version && !Blank(check := ini.features["enable statlas"]) ? check : 0
 	settings.features.exchange := !Blank(check := ini.features["enable vaal street"]) ? check : 0
@@ -708,7 +714,7 @@ LLK_FileCheck() ;delete old files (or ones that have been moved elsewhere)
 		If FileExist("img\GUI\leveling tracker\hints\" val ".jpg")
 			FileDelete, % "img\GUI\leveling tracker\hints\" val ".jpg"
 
-	For index, val in ["the_wall_with_notes", "a_large_spiral", "form_a_triangle", "but_you_have_to_loop_around", "altar-locked_room_with_stairs", "the_plaza_and_the", "follow_the_road_straight", "diamond-shaped", "follow_road_straight", "the_wall_with_paper_talismans", "locked_room_with_stairs", "the_plaza_and", "check_the_surroundings", "follow_this_edge", "check_surroundings", "crescent-shaped", "diamond-shape", "paper_talismans", "pillar_structures", "the_wall_with_paper_talismans - Copy", "tower_structures", "waterway_edge", "swirls_that_point_to_missing_ones"]
+	For index, val in ["the_wall_with_notes", "a_large_spiral", "form_a_triangle", "but_you_have_to_loop_around", "altar-locked_room_with_stairs", "the_plaza_and_the", "follow_the_road_straight", "diamond-shaped", "follow_road_straight", "the_wall_with_paper_talismans", "locked_room_with_stairs", "the_plaza_and", "check_the_surroundings", "follow_this_edge", "check_surroundings", "crescent-shaped", "diamond-shape", "paper_talismans", "pillar_structures", "the_wall_with_paper_talismans - Copy", "tower_structures", "swirls_that_point_to_missing_ones", "road_leads_straight"]
 		If FileExist("img\GUI\leveling tracker\hints 2\" val ".jpg")
 			FileDelete, % "img\GUI\leveling tracker\hints 2\" val ".jpg"
 
@@ -716,7 +722,7 @@ LLK_FileCheck() ;delete old files (or ones that have been moved elsewhere)
 		If FileExist("img\GUI\statlas\" val ".jpg")
 			FileDelete, % "img\GUI\statlas\" val ".jpg"
 
-	For index, val in ["necropolis.ahk"]
+	For index, val in ["necropolis.ahk", "ocr.ahk"]
 		If FileExist("modules\" val)
 			FileDelete, modules\%val%
 
@@ -728,6 +734,8 @@ LLK_FileCheck() ;delete old files (or ones that have been moved elsewhere)
 		FileDelete, data\english\necropolis.json
 	If FileExist("ini\altars.ini")
 		FileMove, ini\altars.ini, ini\ocr - altars.ini, 1
+	Loop, Files, % "ini" vars.poe_version "\ocr*.ini"
+		FileMove, % "ini" vars.poe_version "\" A_LoopFileName, % "ini" vars.poe_version "\" StrReplace(A_LoopFileName, "ocr", "TLDR"), 1
 
 	If !FileExist("data\") || !FileExist("data\global\") || !FileExist("data\english\") || !FileExist("data\english\UI.txt") || !FileExist("data\english\client.txt")
 		Return 0
@@ -753,8 +761,7 @@ Loop()
 		If !vars.hwnd.poe_client
 			If (vars.poe_version != CheckClient())
 			{
-				MsgBox, 4, Exile UI, % "You have switched to a different game-client, do you want the tool to switch/restart as well?`n(If not, launch the correct client and then click 'no')"
-				IfMsgBox Yes
+				If Gui_MsgBox("switch client", Lang_Trans("msg_clientswitch"), [Lang_Trans("msg_clientswitch", 2), Lang_Trans("msg_clientswitch", 3)],, ["yes", "no"])
 					LLK_Restart()
 				Else Return
 			}
@@ -785,9 +792,9 @@ Loop()
 			If WinExist("ahk_id " vars.hwnd.settings.main)
 			{
 				If vars.news.unread
-					GuiControl, % "+Background" (Mod(news_tick, 2) ? "Black" : "Lime"), % vars.hwnd.settings.background_news
+					GuiControl, % "+Background" (Mod(news_tick, 2) ? "404040" : "Lime"), % vars.hwnd.settings.background_news
 				If vars.poe_version && vars.update.1
-					GuiControl, % "+Background" (Mod(news_tick, 2) ? "Black" : (vars.update.1 < 0 ? "Red" : "Lime")), % vars.hwnd.settings.background_updater
+					GuiControl, % "+Background" (Mod(news_tick, 2) ? "404040" : (vars.update.1 < 0 ? "Red" : "Lime")), % vars.hwnd.settings.background_updater
 				If vars.actdecoder.updater.available
 				{
 					GuiControl, % "+c" (Mod(news_tick, 2) ? "White" : "Lime"), % vars.hwnd.settings.actdecoder

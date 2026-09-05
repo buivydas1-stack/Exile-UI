@@ -74,7 +74,7 @@ Gui_CreateGraph(width, height, graph, color)
 	Return hbmBitmap
 }
 
-Gui_DropDownList(object, coord_array, align := "", altsubmit := 0, prev_align := "")
+Gui_DropDownList(object, coord_array, align := "", altsubmit := 0, prev_align := "Center")
 {
 	local
 	global vars, settings, json
@@ -476,6 +476,80 @@ Gui_MenuWidget(cHWND := "", mode := "", hotkey := 1)
 	}
 }
 
+Gui_MsgBox(usecase, title, text, coords := "[]", choices := "[]", align := "Left")
+{
+	local
+	global vars, settings
+
+	If !IsObject(vars.settings)
+		Settings_menu("init")
+
+	If (check := LLK_HasVal(vars.MsgBox, usecase,,,, 1))
+	{
+		control := LLK_HasVal(vars.MsgBox[check].hwnd, usecase), usecase := check
+		If (control = "title")
+		{
+			WinGetPos, xWin, yWin, width, height, % "ahk_id " vars.MsgBox[usecase].hwnd.main
+			MouseGetPos, xMouse, yMouse
+			While GetKeyState("LButton", "P")
+			{
+				LLK_Drag(width, height, x, y, 1, vars.MsgBox[check].name,, xMouse - xWin, yMouse - yWin)
+				Sleep 15
+			}
+			Return
+		}
+		Else KeyWait, LButton
+
+		vars.MsgBox[usecase].choice := control
+		LLK_Overlay(vars.MsgBox[usecase].hwnd.main, "destroy")
+		Return
+	}
+
+	If !IsObject(vars.MsgBox)
+		vars.MsgBox := {}
+
+	GUI := "MsgBox_" StrReplace(usecase, " ", "_")
+	Gui, %GUI%: New, -DPIScale -Caption +LastFound +AlwaysOnTop +ToolWindow +Border HWNDhwnd_msgbox +E0x02000000 +E0x00080000
+	Gui, %GUI%: Color, Black
+	Gui, %GUI%: Margin, -1, -1
+	Gui, %GUI%: Font, % "s" settings.general.fSize " cWhite", % vars.system.font
+	vars.MsgBox[usecase] := {"hwnd": {"main": hwnd_msgbox}, "name": GUI}, dimensions := []
+
+	Gui, %GUI%: Add, Text, % "x" 46*settings.general.fWidth - 1 " y-1" " w" 2*settings.general.fWidth " Center Border BackgroundTrans gGui_MsgBox HWNDhwnd1", x
+	Gui, %GUI%: Add, Progress, % "Disabled xp yp wp hp Border Background" vars.settings.cButtons2 " c" vars.settings.cButtons, 100
+	Gui, %GUI%: Add, Text, % "Section x-1 y-1 w" 48*settings.general.fWidth " Center Border BackgroundTrans HWNDhwnd gGui_MsgBox", % title
+	Gui, %GUI%: Add, Progress, % "Disabled xp yp wp hp Border Background404040 cBlack", 100
+	vars.MsgBox[usecase].hwnd.title := hwnd, vars.MsgBox[usecase].hwnd.close := hwnd1
+
+	For index, val in text
+		Gui, %GUI%: Add, Text, % "Section xs" (index = 1 ? " x" settings.general.fWidth - 1 " y+" settings.general.fWidth//2 : " y+" Round(0.4*settings.general.fHeight)) " w" 46*settings.general.fWidth " BackgroundTrans " align, % val
+	
+	If !choices.Count()
+		choices := ["ok"]
+	For index, val in choices
+		dimensions.Push(Lang_Trans("global_" val))
+	LLK_PanelDimensions(dimensions, settings.general.fSize, wButtons, hButtons)
+	
+	For index, val in choices
+	{
+		Gui, %GUI%: Add, Text, % (index = 1 ? "Section xs x" 24*settings.general.fWidth - (choices.Count() = 1 ? wButtons/2 : wButtons + settings.general.fWidth//2) " y+" settings.general.fHeight//2 : "ys x+" settings.general.fWidth) " w" wButtons " Center Border BackgroundTrans HWNDhwnd gGUI_MsgBox", % Lang_Trans("global_" val)
+		Gui, %GUI%: Add, Progress, % "Disabled xp yp wp hp Border Background" vars.settings.cButtons2 " c" vars.settings.cButtons, 100
+		vars.MsgBox[usecase].hwnd[val] := hwnd
+	}
+		
+	Gui, %GUI%: Add, Text, % "xs y+1 w10 h" settings.general.fHeight//2 " BackgroundTrans"
+	Gui, %GUI%: Show, % "NA x10000 y10000 w" 48*settings.general.fWidth - 2
+	WinGetPos,,, Width, Height, ahk_id %hwnd_msgbox%
+	Gui, %GUI%: Add, Progress, % "Disabled x-1 y" settings.general.fHeight - 2 " w" width " h" height - settings.general.fHeight + 1 " Border Background404040 cBlack", 100
+
+	Gui, %GUI%: Show, % "x" (Blank(coords.1) ? vars.monitor.x + vars.monitor.w//2 - width/2 : coords.1) " y" (Blank(coords.2) ? vars.monitor.y + vars.monitor.h//2 - height/2 : coords.2)
+	LLK_Overlay(hwnd_msgbox, "show", 0, GUI)
+
+	While Blank(vars.MsgBox[usecase].choice)
+		Sleep 200
+	Return RegexMatch(vars.MsgBox[usecase].choice, "i)yes|ok")
+}
+
 Gui_Name(GuiHWND)
 {
 	local
@@ -631,6 +705,33 @@ Gui_RadialMenu2(cHWND := "", hotkey := 1)
 
 	If longpress
 		LLK_Overlay(vars.hwnd.radial.main, "destroy"), vars.hwnd.radial.main := ""
+}
+
+Gui_Slider(hwnd_label, array_mincurrentmax, interval, format := "", increment := 1)
+{
+	local
+	global vars, settings
+
+	If hwnd_label && Blank(LLK_ControlGetPos(hwnd_label).x) || Blank(array_mincurrentmax.1) || Blank(array_mincurrentmax.2) || Blank(array_mincurrentmax.3) || !interval
+	{
+		LLK_ToolTip((settings.general.dev ? "invalid params" : Lang_Trans("global_error")),,,,, "Red")
+		KeyWait, LButton
+		Return
+	}
+
+	MouseGetPos, x, y
+	min := array_mincurrentmax.1, current := array_mincurrentmax.2, max := array_mincurrentmax.3
+	While GetKeyState("LButton", "P")
+	{
+		MouseGetPos, x1, y1
+		If (Abs(x1 - x) >= Abs(y1 - y))
+			val := (x1 >= x ? Min(current + increment * ((x1 - x)//interval), max) : Max(current - increment * ((x - x1)//interval), min))
+		Else val := (y1 <= y ? Min(current + increment * ((y - y1)//interval), max) : Max(current - increment * ((y1 - y)//interval), min))
+		GuiControl, Text, % hwnd_label, % format.1 . val . format.2
+		GuiControl, movedraw, % hwnd_label
+		Sleep 50
+	}
+	Return val
 }
 
 LLK_ControlGet(cHWND, GUI_name := "", subcommand := "")

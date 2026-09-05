@@ -24,43 +24,15 @@ Statlas()
 	local
 	global vars, settings, db
 
-	start := A_TickCount
 	If !IsObject(db.maps)
 		DB_Load("maps")
-	Gui, ocr_comms: New, -DPIScale -Caption +LastFound +AlwaysOnTop +ToolWindow +Border, % "Exile UI: OCR"
-	WinSet, Trans, 1
-	Gui, ocr_comms: Add, Text,, % "client: " vars.hwnd.poe_client
-	. "`nclip: " vars.general.xMouse - vars.client.x - vars.client.h//6 "|" vars.general.yMouse - vars.client.y + Round(vars.client.h * 0.03) "|" vars.client.h//3 "|" Round(vars.client.h/22) "`n"
-	. (settings.general.blackbars ? "blackbars: " vars.client.x - vars.monitor.x "|0|" vars.client.w "|" vars.client.h "`n" : "")
-	. (settings.general.lang_client = "english" ? "`nenglish" : "")
-	Gui, ocr_comms: Show, NA x10000 y10000
 
-	vars.statlas := {}, vars.ocr_comms := {}
-	Run, % """" A_AhkPath """ """ A_ScriptDir "\modules\_ocr thread.ahk""", % A_ScriptDir, UseErrorLevel
-
-	If ErrorLevel
-	{
-		LLK_ToolTip(Lang_Trans("ocr_fail"), 2,,,, "Red")
-		Gui, ocr_comms: Destroy
+	x := vars.general.xMouse - vars.client.x - vars.client.h//6, y := vars.general.yMouse - vars.client.y + Round(vars.client.h * 0.03), w := vars.client.h//3, h := Round(vars.client.h/22)
+	text := OCR_Start(x, y, w, h, "ALT")
+	If !text
 		Return
-	}
-	Else If !GetKeyState("ALT", "P")
-		While !ocr_failed && Blank(vars.ocr_comms.text)
-		{
-			If (A_TickCount >= start + 1000)
-				ocr_failed := 1
-			Sleep 25
-		}
 
-	If ocr_failed || (vars.ocr_comms.text = "OCR failed") || GetKeyState("ALT", "P")
-	{
-		If (vars.ocr_comms.text = "OCR failed") || !GetKeyState("ALT", "P")
-			LLK_ToolTip(Lang_Trans("global_fail"), 1,,,, "Red")
-		KeyWait, ALT
-		Gui, ocr_comms: Destroy
-		Return
-	}
-	text := SubStr(vars.ocr_comms.text, InStr(vars.ocr_comms.text, ":") + 2), text := StrReplace(text, "  ", " ")
+	text := SubStr(text, InStr(text, ":") + 2), text := StrReplace(text, "  ", " ")
 	vars.statlas := {}
 
 	Loop, Parse, text, `n, " `r`t"

@@ -44,7 +44,7 @@
 	settings.mapinfo.trigger := !Blank(check := ini.settings["enable shift-clicking"]) ? check : 0
 	settings.mapinfo.tabtoggle := !Blank(check := ini.settings["show panel while holding tab"]) ? check : 0
 	settings.mapinfo.activation := !Blank(check := ini.settings.activation) ? check : "toggle"
-	settings.mapinfo.position := !Blank(check := ini.settings.position) ? check : 1
+	settings.mapinfo.position := !Blank(check := ini.settings.position) ? check : 2
 	settings.mapinfo.roll_highlight := !Blank(check := ini.settings["highlight map rolls"]) ? check : 0, settings.mapinfo.roll_requirements := {}
 	settings.mapinfo.roll_colors := [!Blank(check := ini.UI["map rolls text color"]) ? check : "000000", !Blank(check1 := ini.UI["map rolls back color"]) ? check1 : "FFFF00"]
 	For index, val in ["quantity", "rarity", "pack size", "maps", "scarabs", "currency", "waystones"]

@@ -1,5 +1,19 @@
 [
   [
+	["1.65.0", 16500, 1],
+	"september 3, 2026",
+	"act-tracker:\n–> updated the poe2 guide for 0.5.5\n–> these updates will be applied the next time you reset your guide slot\n–> removed farrow quests in acts 1-3\n–> several stylistic/format tweaks\n–> various pathing and hint improvements(/highlight)"
+  ],
+  [
+	["1.64.3", 16403],
+	"august 29, 2026",
+	"chat macros:\n–> the widget size wasn't saved correctly",
+	"context-menu:\n–> added a link to a calculator for large cluster jewels",
+	"map-events:\n–> added opacity options",
+	"map-tracker:\n–> the <export> button wasn't working\n–> added support for atlas anomalies",
+	"tldr-tooltips:\n–> no longer experimental\n–> removed manual compatibility check\n–> added new hotkey settings"
+  ],
+  [
 	["1.64.2", 16402],
 	"august 10, 2026",
 	"chat macros:\n–> added fast-travel to the sovereign",
@@ -55,7 +69,7 @@
 	"tool updates should now download and install significantly faster",
 	"stash-ninja:\n–> added support for controller ui (global toggle is in the <game-client> settings)",
 	"rune-ninja:\n–> kb/controller mode is now set by the global toggle in the <game-client> settings",
-	"act-decoder:\n–> note: poe2 are still largely outdated\n–> layouts are now downloaded separately in the settings (to speed up general tool updates)(/highlight)",
+	"act-decoder:\n–> note: poe2 still largely outdated\n–> layouts are now downloaded separately in the settings (to speed up general tool updates)(/highlight)",
 	"map-tracker:\n–> new maps added in 0.5 now use the correct area names (also applies retroactively to existing logs)"
   ],
   [

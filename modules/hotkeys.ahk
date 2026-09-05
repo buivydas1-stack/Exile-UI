@@ -155,20 +155,8 @@ Hotkeys_ESC()
 	}
 	Else If WinExist("ahk_id " vars.hwnd.stash.main)
 		Stash_Close()
-	Else If WinExist("ahk_id " vars.hwnd.compat_test)
-	{
-		Gui, compat_test: Destroy
-		If vars.OCR.debug
-		{
-			vars.OCR.debug := 0
-			SendInput, % "{" settings.OCR.z_hotkey "}"
-		}
-		Else If settings.OCR.allow
-			Settings_menu(vars.settings.active)
-		Else LLK_Overlay(vars.hwnd.settings.main, "show", 0)
-	}
-	Else If WinExist("ahk_id " vars.hwnd.ocr_tooltip.main)
-		OCR_Close()
+	Else If WinExist("ahk_id " vars.hwnd.TLDR.main)
+		TLDR_Close("ESC")
 	Else If WinExist("ahk_id " vars.hwnd.maptracker_logs.sum_tooltip)
 		Gui, maptracker_tooltip: Destroy
 	Else If WinExist("ahk_id "vars.hwnd.legion.main)
@@ -387,6 +375,7 @@ Hotkeys_Tab()
 #If (vars.log.areaID = vars.maptracker.map.id) && settings.features.maptracker && settings.maptracker.mechanics && settings.maptracker.portal_reminder && vars.maptracker.map.content.Count() && WinActive("ahk_id " vars.hwnd.poe_client)
 #If vars.leveltracker.skilltree_schematics.GUI && WinActive("ahk_group poe_ahk_window")
 #If vars.actdecoder.zones[vars.log.areaID] && WinActive("ahk_group poe_ahk_window")
+#If WinActive("ahk_id " vars.hwnd.poe_client) || WinActive("ahk_id " vars.hwnd.TLDR.main)
 
 #If vars.lootfilter.update_pending.1 && (vars.general.wMouse = vars.hwnd.lootfilter.main)
 LButton::
@@ -528,18 +517,18 @@ SC038::Stash_Hotkeys("LAlt")
 *LButton::
 *RButton::Return
 
-#If vars.OCR.GUI ;sending inputs for screen-reading
-*WheelUp::vars.OCR.wGUI += ((vars.OCR.wGUI + 30) * 2 >= vars.client.w || (vars.OCR.hGUI + 15) * 2 >= vars.client.h) ? 0 : 30, vars.OCR.hGUI += ((vars.OCR.wGUI + 30) * 2 >= vars.client.w || (vars.OCR.hGUI + 15) * 2 >= vars.client.h) ? 0 : 15
-*WheelDown::vars.OCR.wGUI -= (vars.OCR.wGUI - 30 >= vars.client.h / 10 + 30 && vars.OCR.hGUI - 15 >= vars.client.h / 10 + 15) ? 30 : 0, vars.OCR.hGUI -= (vars.OCR.wGUI - 30 >= vars.client.h / 10 + 30 && vars.OCR.hGUI - 15 >= vars.client.h / 10 + 15) ? 15 : 0
+#If vars.TLDR.GUI ;sending inputs for screen-reading
+*WheelUp::vars.TLDR.wGUI += ((vars.TLDR.wGUI + 30) * 2 >= vars.client.w || (vars.TLDR.hGUI + 15) * 2 >= vars.client.h) ? 0 : 30, vars.TLDR.hGUI += ((vars.TLDR.wGUI + 30) * 2 >= vars.client.w || (vars.TLDR.hGUI + 15) * 2 >= vars.client.h) ? 0 : 15
+*WheelDown::vars.TLDR.wGUI -= (vars.TLDR.wGUI - 30 >= vars.client.h / 10 + 30 && vars.TLDR.hGUI - 15 >= vars.client.h / 10 + 15) ? 30 : 0, vars.TLDR.hGUI -= (vars.TLDR.wGUI - 30 >= vars.client.h / 10 + 30 && vars.TLDR.hGUI - 15 >= vars.client.h / 10 + 15) ? 15 : 0
 
-#If vars.hwnd.ocr_tooltip.main && vars.general.wMouse && (vars.general.wMouse = vars.hwnd.ocr_tooltip.main) ;hovering over the ocr tooltip
-*LButton::OCR_Close()
-*SC039::OCR_Highlight("space")
-*SC002::OCR_Highlight(1)
-*SC003::OCR_Highlight(2)
-*SC004::OCR_Highlight(3)
-*SC005::OCR_Highlight(4)
-*SC006::OCR_Highlight(5)
+#If vars.hwnd.TLDR.main && vars.general.wMouse && (vars.general.wMouse = vars.hwnd.TLDR.main) ;hovering over the TLDR tooltip
+*LButton::Return
+*SC039::TLDR_Highlight("space")
+*SC002::TLDR_Highlight(1)
+*SC003::TLDR_Highlight(2)
+*SC004::TLDR_Highlight(3)
+*SC005::TLDR_Highlight(4)
+*SC006::TLDR_Highlight(5)
 
 #If vars.snipping_tool.GUI && WinActive("ahk_id " vars.hwnd.snipping_tool.main)
 *SC011::Screenchecks_ImageRecalibrate("w")
@@ -550,10 +539,10 @@ SC039::Screenchecks_ImageRecalibrate("space")
 LButton::Screenchecks_ImageRecalibrate("LButton")
 RButton::Screenchecks_ImageRecalibrate("RButton")
 
-#If vars.hwnd.ocr_tooltip.main && WinExist("ahk_id " vars.hwnd.ocr_tooltip.main)
+#If vars.hwnd.TLDR.main && WinExist("ahk_id " vars.hwnd.TLDR.main)
 ~SC02A::
 ~SC02A UP::
-WinSet, TransColor, % "Purple " (InStr(A_ThisHotkey, "UP") ? "255" : 0), % "ahk_id " vars.hwnd.ocr_tooltip.main
+WinSet, TransColor, % "Purple " (InStr(A_ThisHotkey, "UP") ? "255" : 0), % "ahk_id " vars.hwnd.TLDR.main
 Return
 
 #If !vars.mapinfo.toggle && (vars.system.timeout = 0) && (vars.general.wMouse = vars.hwnd.poe_client) && WinExist("ahk_id "vars.hwnd.mapinfo.main) ;clicking the client to hide the map-info tooltip

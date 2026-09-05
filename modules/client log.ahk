@@ -339,8 +339,8 @@ Log_Loop(mode := 0)
 	If vars.lootfilter.tester_applied && WinExist("ahk_id " vars.hwnd.settings.main)
 	{
 		tick := SubStr(Floor(A_TickCount/1000), 0)
-		GuiControl, % "+c" (Mod(tick, 2) ? "Black" : "White"), % vars.hwnd.settings.tester_restore
-		GuiControl, % "+c" (Mod(tick, 2) ? "White" : "Black") " +BackgroundFF8000", % vars.hwnd.settings.tester_restore_bar
+		GuiControl, % "+c" (Mod(tick, 2) ? "Red" : "White"), % vars.hwnd.settings.tester_restore
+		GuiControl, % "movedraw", % vars.hwnd.settings.tester_restore
 	}
 
 	If IsObject(vars.maptracker)

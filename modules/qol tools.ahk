@@ -50,6 +50,7 @@
 	settings.mapevents.color := !Blank(check := ini.mapevents["font-color"]) ? check : "FF0000"
 	settings.mapevents.color1 := !Blank(check := ini.mapevents["background color"]) ? check : "FFFFFF"
 	settings.mapevents.duration := !Blank(check := ini.mapevents.duration) ? check : 5
+	settings.mapevents.opacity := !Blank(check := ini.mapevents.opacity) ? check : 5
 	settings.mapevents.position := !Blank(check := ini.mapevents.position) ? check : 1
 	For index, val in settings.mapevents.event_list
 		settings.mapevents[val] := !Blank(check := ini.mapevents["enable " val]) ? check : (val = "hideout" ? 0 : 1)
@@ -706,7 +707,7 @@ MapEvent(type := "")
 
 	If (type = "hideout")
 		text .= " (" Lang_Trans("global_tiers", tier) ")"
-	LLK_ToolTip(text, settings.mapevents.duration, 10000, 10000, "mapevents_" type, color, settings.mapevents.fSize, (position = 4 ? "Right" : ""),,, background)
+	LLK_ToolTip(text, settings.mapevents.duration, 10000, 10000, "mapevents_" type, color, settings.mapevents.fSize, (position = 4 ? "Right" : ""), settings.mapevents.opacity * 51,, background)
 	WinGetPos,,, Width, Height, % "ahk_id" vars.hwnd["tooltip_mapevents_" type]
 	Switch position
 	{

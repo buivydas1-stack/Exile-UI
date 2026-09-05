@@ -449,6 +449,12 @@ Omni_ContextMenu()
 				ControlGetPos,,, w7,,, % "ahk_id " hwnd
 				ControlGetPos,,, w8,,, % "ahk_id " hwnd1
 				vars.hwnd.omni_context.poedb := hwnd, vars.hwnd.omni_context.poedb1 := hwnd1
+				If (cluster_type = "large")
+				{
+					Gui, omni_context: Add, Text, % "Section xs gOmni_ContextMenuPick HWNDhwnd" style, % "cluster calc"
+					ControlGetPos,,, w12,,, % "ahk_id " hwnd
+					vars.hwnd.omni_context.clustercalc := hwnd
+				}
 			}
 
 			If !item.unid && (item.itembase = "Timeless Jewel") && InStr(vars.omnikey.clipboard, Lang_Trans("items_uniquemod"))
@@ -468,7 +474,7 @@ Omni_ContextMenu()
 				vars.hwnd.omni_context.chromatics := hwnd
 			}
 		}
-		Loop 11
+		Loop 12
 			w%A_Index% := !w%A_Index% ? 0 : w%A_Index%
 		width := Max(w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11)
 	}
@@ -535,6 +541,8 @@ Omni_ContextMenuPick(cHWND)
 			ToolTip_Mouse("cluster", 1)
 		}
 	}
+	Else If (check = "clustercalc")
+		Run, % "https://clusters.poetools.dev/"
 	Else If (check = "craftofexile")
 		Run, % "https://www.craftofexile.com/?game=poe" (vars.poe_version ? "2" : "1")
 	Else If (check = "seed")

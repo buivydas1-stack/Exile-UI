@@ -5,7 +5,7 @@
 
 	If !vars.poe_version && !FileExist("ini\search-strings.ini")
 	{
-		IniWrite, 1, ini\search-strings.ini, searches, beast crafting
+		IniWrite, 0, ini\search-strings.ini, searches, beast crafting
 		IniWrite, % "", ini\search-strings.ini, beast crafting, last coordinates
 		IniWrite, "warding", ini\search-strings.ini, beast crafting, 00-flasks: curse
 		IniWrite, "sealing|lizard", ini\search-strings.ini, beast crafting, 00-flasks: bleed

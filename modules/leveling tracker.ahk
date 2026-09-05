@@ -944,18 +944,13 @@ Leveltracker_GuideEditor(cHWND)
 		}
 		Else If (check = "winbar")
 		{
-			start := A_TickCount
+			MouseGetPos, xMouse, yMouse
+			WinGetPos, xWin, yWin, width, height, % "ahk_id " vars.hwnd.leveltracker_editor.main
 			While GetKeyState("LButton", "P")
-				If (A_TickCount >= start + 100)
-				{
-					If !width
-					{
-						MouseGetPos, xMouse, yMouse
-						WinGetPos, xWin, yWin, width, height, % "ahk_id " vars.hwnd.leveltracker_editor.main
-					}
-					LLK_Drag(width, height, xPos, yPos, 1,,, xMouse - xWin, yMouse - yWin, 1)
-					Sleep 10
-				}
+			{
+				LLK_Drag(width, height, xPos, yPos, 1,,, xMouse - xWin, yMouse - yWin, 1)
+				Sleep 15
+			}
 			vars.general.drag := 0
 			If !Blank(xPos)
 				vars.leveltracker_editor.xPos := xPos, vars.leveltracker_editor.yPos := yPos
@@ -1105,7 +1100,7 @@ Leveltracker_GuideEditor(cHWND)
 				Return
 			Sleep 50
 			If InStr(check, "pastearea_")
-				Clipboard := "areaid" control (InStr(control, "_town") ? " (img:town)" : "") " `;`; " db.leveltracker.areaIDs[control].name
+				Clipboard := "areaid" control (InStr(control, "_town") ? " (img:town" StrReplace(vars.poe_version, " ") ")" : "") " `;`; " db.leveltracker.areaIDs[control].name
 			Else Clipboard := "(img:" control ")"
 			SendInput, ^{v}
 			Return

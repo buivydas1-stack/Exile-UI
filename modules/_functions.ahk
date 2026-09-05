@@ -117,7 +117,7 @@ DB_Load(database)
 			}
 		}
 	}
-	Else If (database = "OCR")
+	Else If (database = "TLDR")
 	{
 		tldr := Json.Load(LLK_FileRead("data\english\TLDR-tooltips.json"))
 		db.altars := tldr["eldritch altars"].Clone()
@@ -573,6 +573,60 @@ LLK_TrimDecimals(string)
 			Break
 	}
 	Return string
+}
+
+OCR_Start(x, y, w, h, debug_key := "", usecase := "", opt_params := "[]", opt_effects := "[]") ; debug key: separate key that -- if held down during scans -- opens a GUI with the screen-cap and scan results
+{																			; opt_effects: array, and each index is an array itself consisting of the 4 parameters used by Gdip_CreateEffect(), e.g. [5, 0, 35, 0]
+	local
+	global vars, settings, json
+
+	vars.ocr_comms := {}, start := A_TickCount, object := {}
+	Gui, ocr_comms: New, -DPIScale -Caption +LastFound +AlwaysOnTop +ToolWindow +Border, % "Exile UI: OCR"
+	WinSet, Trans, 1
+	object.client := [vars.hwnd.poe_client, vars.client.h], object.clip := [x, y, w, h]
+	If settings.general.blackbars
+		object.blackbars := [vars.client.x - vars.monitor.x, 0, vars.client.w, vars.client.h]
+	If usecase
+		object.usecase := usecase
+	If !Blank(debug_key)
+		object.debug := debug_key
+	If (settings.general.lang_client = "english")
+		object.language := "english"
+	If opt_params.Count()
+		object.params := opt_params.Clone()
+	If opt_effects.Count()
+		object.effects := opt_effects.Clone()
+
+	Gui, ocr_comms: Add, Text,, % json.dump(object)
+	Gui, ocr_comms: Show, NA x10000 y10000
+
+	Run, % """" A_AhkPath """ """ A_ScriptDir "\modules\_ocr thread.ahk""", % A_ScriptDir, UseErrorLevel
+	If ErrorLevel
+	{
+		If (usecase != "TLDR")
+			LLK_ToolTip(Lang_Trans("ocr_fail"), 2,,,, "Red")
+		Gui, ocr_comms: Destroy
+		Return
+	}
+	Else If !(debug_key && GetKeyState(debug_key, "P"))
+		While !ocr_failed && Blank(vars.ocr_comms.text)
+		{
+			If (A_TickCount >= start + 1000)
+				ocr_failed := 1
+			Sleep 25
+		}
+
+	If ocr_failed || (vars.ocr_comms.text = "OCR failed") || debug_key && GetKeyState(debug_key, "P")
+	{
+		WinWaitClose, OCR debug
+		If (usecase != "TLDR") && ((vars.ocr_comms.text = "OCR failed") || !(debug_key && GetKeyState(debug_key, "P")))
+			LLK_ToolTip(Lang_Trans("global_fail"), 1,,,, "Red")
+		KeyWait, % debug_key
+		Gui, ocr_comms: Destroy
+		Return
+	}
+	Gui, ocr_comms: Destroy
+	Return SubStr(vars.ocr_comms.text, InStr(vars.ocr_comms.text, "`n") + 1)
 }
 
 SnipGuiClose()

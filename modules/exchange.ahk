@@ -809,7 +809,7 @@ AsyncTradeReprice(mode := "", tooltip := "")
 		If !tooltip
 		{
 			price := SubStr(Clipboard, InStr(Clipboard, "note:") + 11), price := RTrim(price, " `n`r"), array := StrSplit(price, " ")
-			If !RegExMatch(price, "\d") || InStr(price, "offer") || vars.poe_version && (mode = "sell") && (array.1 = 1 && array.2 = alt_currency)
+			If !RegExMatch(price, "\d") || InStr(price, "offer")
 			{
 				LLK_ToolTip(Lang_Trans("global_error"),,,,, "Red")
 				Return
@@ -852,22 +852,22 @@ AsyncTradeReprice(mode := "", tooltip := "")
 				AsyncTrade(), LLK_ToolTip(Lang_Trans("async_listing"),,,,, "Lime")
 				Return
 			}
-			If !vars.poe_version && (mode = "sell") && (array.1 = 1) && (array.2 = "alt")
+			If AsyncTradeShouldReclaim(vars.poe_version, mode, array.1, array.2)
 			{
-				Sleep, 20
+				Sleep, % vars.poe_version ? 15 : 20
 				SendInput, ^{LButton}
 				Return
 			}
-			Sleep, 20
+			Sleep, % vars.poe_version ? 15 : 20
 			SendInput, {RButton}
-			; PoE2 uses the direct path when the currency stays unchanged. One-unit conversions keep the stock pricing panel because its currency selector has separate UI geometry.
-			If AsyncTradeCanDirectReprice(vars.poe_version, mode, array.1)
+			; PoE2 also converts one divine to chaos and one chaos to exalted using the selected league economy.
+			If AsyncTradeCanDirectReprice(vars.poe_version, mode, array.1, array.2)
 			{
-				Sleep, 60
+				Sleep, % vars.poe_version ? 45 : 60
 				If !AsyncTradePriceTarget(array.1, array.2, settings.async.minchange, price_new, currency_new, error)
 				{
 					SendInput, {ESC}
-					LLK_ToolTip((error = "minimum") ? "minimum price: 1 alteration" : Lang_Trans("async_pricefailed", 3),,,,, "Yellow")
+					LLK_ToolTip((error = "minimum") ? (vars.poe_version ? "minimum price: 1 exalted" : "minimum price: 1 alteration") : Lang_Trans("async_pricefailed", 3),,,,, "Yellow")
 					Return
 				}
 				If !AsyncTradeApplyPrice(price_new, currency_new, array.2)
@@ -1050,11 +1050,18 @@ AsyncTradeReprice(mode := "", tooltip := "")
 	}
 }
 
-AsyncTradeCanDirectReprice(poe_version, mode, amount)
+AsyncTradeCanDirectReprice(poe_version, mode, amount, currency := "")
 {
 	local
 
-	Return (mode = "sell") && (!poe_version || amount > 1)
+	Return (mode = "sell") && (!poe_version || amount > 1 || (amount = 1 && (currency = "divine" || currency = "chaos")))
+}
+
+AsyncTradeShouldReclaim(poe_version, mode, amount, currency)
+{
+	local
+
+	Return (mode = "sell") && (amount = 1) && (currency = (poe_version ? "exalted" : "alt"))
 }
 
 AsyncTradePriceTarget(amount, currency, minchange, ByRef target_amount, ByRef target_currency, ByRef error)
@@ -1063,12 +1070,12 @@ AsyncTradePriceTarget(amount, currency, minchange, ByRef target_amount, ByRef ta
 	global vars
 
 	target_amount := target_currency := error := "", amount += 0
-	If (currency = "alt") && (amount > 1) && (amount <= 5)
+	If !vars.poe_version && (currency = "alt") && (amount > 1) && (amount <= 5)
 	{
 		target_amount := (amount <= 3) ? 1 : 3, target_currency := currency
 		Return 1
 	}
-	If (currency = "chaos") && (amount = 1)
+	If !vars.poe_version && (currency = "chaos") && (amount = 1)
 	{
 		target_amount := 5, target_currency := "alt"
 		Return 1
@@ -1080,15 +1087,15 @@ AsyncTradePriceTarget(amount, currency, minchange, ByRef target_amount, ByRef ta
 		Return 1
 	}
 
-	next_currency := (currency = "divine") ? "chaos" : (currency = "chaos") ? "alt" : ""
+	next_currency := (currency = "divine") ? "chaos" : (currency = "chaos") ? (vars.poe_version ? "exalted" : "alt") : ""
 	If !next_currency
 	{
-		error := (currency = "alt" && amount = 1) ? "minimum" : "unsupported"
+		error := (currency = (vars.poe_version ? "exalted" : "alt") && amount = 1) ? "minimum" : "unsupported"
 		Return 0
 	}
 
 	Economy_Update("currency", 10)
-	If (vars.economy.currency.timestamp.2 = "failed") || !vars.economy.currency[currency] || !vars.economy.currency[next_currency]
+	If (vars.economy.currency.timestamp.2 = "failed") || (vars.economy.currency[currency] <= 0) || (vars.economy.currency[next_currency] <= 0)
 	{
 		error := "prices"
 		Return 0
@@ -1132,38 +1139,46 @@ AsyncTradeApplyPrice(amount, currency, currency_current)
 	WinWaitActive, % "ahk_id " vars.hwnd.poe_client,, 2
 	If ErrorLevel
 		Return 0
-	Sleep, 20
+	Sleep, % vars.poe_version ? 15 : 20
 	SendInput, ^{a}^{v}
 	If (currency = currency_current)
 	{
 		SendInput, {ENTER}
-		Sleep, 20
+		Sleep, % vars.poe_version ? 15 : 20
 		Return 1
 	}
 	Return AsyncTradeSelectCurrency(currency)
+}
+
+AsyncTradePriceCoordinates(poe_version, client, item_height, currency)
+{
+	local
+	static offsets1 := {"chaos": 0.04, "alt": 0.128}, offsets2 := {"exalted": 0.027, "chaos": 0.125}
+
+	offsets := poe_version ? offsets2 : offsets1
+	If !offsets.HasKey(currency)
+		Return 0
+	; Verified on 1x1, 2x2, 2x3 and 2x4 PoE2 items at 1440p. Taller items lower the controls by one half-slot per row.
+	yCurrency := client.y + Round(client.h * ((poe_version ? 0.603 : 0.595) + Max(0, item_height - 2) * 0.023))
+	Return {"x": client.x + client.w/2 - Round(client.h * 0.055), "y": yCurrency
+		, "selection_y": yCurrency + Round(client.h * offsets[currency]), "confirm_x": client.x + client.w/2 + Round(client.h * 0.135)}
 }
 
 AsyncTradeSelectCurrency(currency)
 {
 	local
 	global vars
-	static y_offsets := {"chaos": 0.04, "alt": 0.128}
 
-	If !y_offsets.HasKey(currency)
+	coords := AsyncTradePriceCoordinates(vars.poe_version, vars.client, AsyncTradeItemHeight(vars.omnikey.item), currency)
+	If !IsObject(coords)
 		Return 0
 	MouseGetPos, xMouse, yMouse
-	item_height := AsyncTradeItemHeight(vars.omnikey.item)
-	xCurrency := vars.client.x + vars.client.w/2 - Round(vars.client.h * 0.055)
-	; The merchant price dialog grows around the displayed item. Each row above two shifts the controls down by ~2.3% of client height.
-	yCurrency := vars.client.y + Round(vars.client.h * (0.595 + Max(0, item_height - 2) * 0.023))
-	Click, %xCurrency%, %yCurrency%
-	Sleep, 30
-	ySelection := yCurrency + Round(vars.client.h * y_offsets[currency])
-	Click, %xCurrency%, %ySelection%
-	Sleep, 30
-	xConfirm := vars.client.x + vars.client.w/2 + Round(vars.client.h * 0.135)
-	Click, %xConfirm%, %yCurrency%
-	Sleep, 30
+	Click, % coords.x " " coords.y
+	Sleep, % vars.poe_version ? 20 : 30
+	Click, % coords.x " " coords.selection_y
+	Sleep, % vars.poe_version ? 20 : 30
+	Click, % coords.confirm_x " " coords.y
+	Sleep, % vars.poe_version ? 20 : 30
 	MouseMove, %xMouse%, %yMouse%, 0
 	Return 1
 }
@@ -1171,11 +1186,27 @@ AsyncTradeSelectCurrency(currency)
 AsyncTradeItemHeight(item)
 {
 	local
-	global db
+	global db, vars
 	static heights := {1: 1, 2: 1, 3: 3, 4: 4, 5: 1, 6: 3, 7: 2, 8: 4, 9: 2, 10: 3, 11: 3, 12: 2, 13: 2, 14: 2, 15: 2
 	, 16: 2, 17: 2, 18: 2, 19: 1, 20: 1, 21: 1, 22: 1, 23: 3, 24: 3, 25: 4, 26: 3, 27: 1, 28: 2, 29: 4, 30: 4
 	, 31: 3, 32: 4, 33: 4, 34: 2, 35: 3, 36: 2, 37: 2, 38: 2, 39: 2}
 
+	; PoE2 classes use names, not the PoE1 numeric base index. Sizes and exceptions from https://repoe-fork.github.io/poe2/base_items.json (2026-09-08).
+	static heights2 := {"amulets": 1, "belts": 1, "rings": 1, "jewels": 1, "charms": 1, "body armours": 3, "boots": 2, "gloves": 2, "helmets": 2
+		, "bows": 4, "crossbows": 4, "quarterstaves": 4, "staves": 4, "spears": 4, "two hand axes": 4, "two hand maces": 4, "two hand swords": 4
+		, "one hand axes": 3, "one hand maces": 3, "one hand swords": 3, "sceptres": 3, "wands": 3, "daggers": 3, "flails": 3, "quivers": 3
+		, "foci": 3, "shields": 3, "bucklers": 2, "claws": 2, "talismans": 2, "traptools": 2, "flasks": 2}
+
+	If vars.poe_version && IsObject(item)
+	{
+		If (item.class = "shields") && (InStr(item.itembase, "Tower Shield") || InStr(item.itembase, "Glacial Fortress") || item.itembase = "Golden Shield")
+			Return 4
+		If (item.class = "bucklers") && (item.itembase = "Runemastered Venerable Defender")
+			Return 3
+		If (item.class = "traptools") && InStr("|Coiled Trap|Dart Trap|Incense Trap|Intricate Trap|Shrapnel Trap|", "|" item.itembase "|", 0)
+			Return 3
+		Return heights2.HasKey(item.class) ? heights2[item.class] : 2
+	}
 	If !IsObject(item) || !item.itembase || !IsObject(db.item_bases)
 		Return 2
 	class_id := db.item_bases._bases[item.itembase]

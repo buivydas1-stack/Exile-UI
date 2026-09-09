@@ -32,6 +32,14 @@
 			DB_Load("item_dust")
 	}
 
+	; Prepare PoE2 item data once, before the first item check, as with PoE1's cached lookups.
+	If vars.poe_version && settings.features.iteminfo
+	{
+		If !IsObject(db.item_bases)
+			DB_Load("item_bases")
+		Iteminfo_ModCandidates2()
+	}
+
 	settings.iteminfo.rules := {}
 	;settings.iteminfo.rules.res_weapons := (settings.general.lang_client != "english") ? 0 : !Blank(check := ini.settings["weapon res override"]) ? check : 0
 	settings.iteminfo.rules.res := (settings.general.lang_client != "english") ? 0 : !Blank(check := ini.settings["res override"]) ? check : 0
@@ -1019,6 +1027,36 @@ Iteminfo_ModLevel(affix, item)
 	cache[cache_key] := {"level": ""}
 }
 
+Iteminfo_ModCandidates2(category := "", name := "")
+{
+	local
+	global db
+	static source, index
+
+	If !IsObject(db.item_mods)
+		DB_Load("item_mods")
+	If (source != db.item_mods) || !IsObject(index)
+	{
+		index := {}
+		For kClass, oClass in db.item_mods
+		{
+			index[kClass] := {}
+			For kModName, oModName in oClass
+				For iTier, oTier in oModName
+				{
+					If !oTier.name
+						Continue
+					If !IsObject(index[kClass][oTier.name])
+						index[kClass][oTier.name] := {}
+					; Keep every matching group and its original tiers. Roll, tag, level and conflict checks still run per item.
+					index[kClass][oTier.name][kModName] := oModName
+				}
+		}
+		source := db.item_mods
+	}
+	Return index[category][name]
+}
+
 Iteminfo_Mods2()
 {
 	local
@@ -1593,7 +1631,7 @@ Iteminfo_GUI()
 
 			For kClass, oClass in db.item_mods ;check for clear-cut cases first, e.g. charms, flasks, etc.
 				If InStr(item.class, kClass)
-					For kModName, oModName in oClass
+					For kModName, oModName in Iteminfo_ModCandidates2(kClass, name)
 						If (iTier := max := LLK_HasVal(oModName, name,,,, 1)) && (oModName[iTier].text.Count() = check_rolls.Count())
 						{
 							For i, roll in oModName[iTier].text
@@ -1628,7 +1666,7 @@ Iteminfo_GUI()
 							Break 2
 						}
 
-			For kModName, oModName in db.item_mods.universal ;check universal mod-list next
+			For kModName, oModName in Iteminfo_ModCandidates2("universal", name) ;check universal mod-list next
 				If (iTier := max := min := LLK_HasVal(oModName, name,,,, 1)) && (oModName[iTier].text.Count() = check_rolls.Count())
 				{
 					For i, roll in oModName[iTier].text
@@ -1673,7 +1711,7 @@ Iteminfo_GUI()
 				}
 
 			If (tier_override != "conflict")
-				For kModName, oModName in db.item_mods.exclusive ;check exclusive mod-list last
+				For kModName, oModName in Iteminfo_ModCandidates2("exclusive", name) ;check exclusive mod-list last
 					If (iTier := max := min := LLK_HasVal(oModName, name,,,, 1)) && (oModName[iTier].text.Count() = check_rolls.Count())
 					{
 						For i, roll in oModName[iTier].text

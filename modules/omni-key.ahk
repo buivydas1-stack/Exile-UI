@@ -508,6 +508,8 @@ Omni_ContextMenuPick(cHWND)
 	{
 		class := StrReplace(vars.omni_context[cHWND], " ", "_"), class := (class = "body_armours") ? "Body_armour" : (InStr(item.itembase, "Runic ") ? "Runic_base_type#" : "") . class
 		class := StrReplace(class, "Jewels", "jewel"), class := InStr(item.class, "heist ") ? "Rogue's_equipment#" . StrReplace(item.class, "heist ") : class
+		If vars.poe_version && (check = "wiki_class") && (class = "life_flasks")
+			class := "Life_flask"
 		Loop, Parse, class, `|
 			Run, % "https://www.poe" Trim(vars.poe_version, " ") "wiki.net/wiki/" . A_LoopField
 	}

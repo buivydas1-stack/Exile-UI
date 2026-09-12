@@ -774,6 +774,16 @@ AsyncTradeReprice(mode := "", tooltip := "")
 
 	If InStr(check, "setprice")
 	{
+		If vars.poe_version
+		{
+			WinActivate, % "ahk_id " vars.hwnd.poe_client
+			WinWaitActive, % "ahk_id " vars.hwnd.poe_client,, 2
+			If ErrorLevel || !AsyncTradePriceDialogReady(StrSplit(price_prev, " ").1)
+			{
+				AsyncTradePriceUnavailable()
+				Return
+			}
+		}
 		Clipboard := "", Clipboard := control
 		ClipWait, 0.1
 		WinActivate, % "ahk_id " vars.hwnd.poe_client
@@ -852,28 +862,60 @@ AsyncTradeReprice(mode := "", tooltip := "")
 				AsyncTrade(), LLK_ToolTip(Lang_Trans("async_listing"),,,,, "Lime")
 				Return
 			}
+			; A locked merchant item still copies its note, but right-click does not open the price field.
+			If vars.poe_version && (mode = "sell")
+			{
+				Sleep, 15
+				SendInput, {RButton}
+				Sleep, 45
+				If !AsyncTradePriceDialogReady(array.1)
+				{
+					AsyncTradePriceUnavailable()
+					Return
+				}
+				price_dialog_open := 1
+			}
 			If AsyncTradeShouldReclaim(vars.poe_version, mode, array.1, array.2)
 			{
+				If price_dialog_open
+				{
+					SendInput, {ESC}
+					Sleep, 30
+					If AsyncTradePriceDialogReady(array.1)
+					{
+						LLK_ToolTip("price dialog still open", 1.5,,,, "Red")
+						Return
+					}
+				}
 				Sleep, % vars.poe_version ? 15 : 20
 				SendInput, ^{LButton}
 				Return
 			}
-			Sleep, % vars.poe_version ? 15 : 20
-			SendInput, {RButton}
+			If !price_dialog_open
+			{
+				Sleep, % vars.poe_version ? 15 : 20
+				SendInput, {RButton}
+			}
 			; PoE2 also converts one divine to chaos and one chaos to exalted using the selected league economy.
 			If AsyncTradeCanDirectReprice(vars.poe_version, mode, array.1, array.2)
 			{
-				Sleep, % vars.poe_version ? 45 : 60
+				If !price_dialog_open
+					Sleep, % vars.poe_version ? 45 : 60
 				If !AsyncTradePriceTarget(array.1, array.2, settings.async.minchange, price_new, currency_new, error)
 				{
 					SendInput, {ESC}
 					LLK_ToolTip((error = "minimum") ? (vars.poe_version ? "minimum price: 1 exalted" : "minimum price: 1 alteration") : Lang_Trans("async_pricefailed", 3),,,,, "Yellow")
 					Return
 				}
-				If !AsyncTradeApplyPrice(price_new, currency_new, array.2)
+				If !AsyncTradeApplyPrice(price_new, currency_new, array.2, array.1)
 				{
-					SendInput, {ESC}
-					LLK_ToolTip(Lang_Trans("global_error"),,,,, "Red")
+					If vars.poe_version
+						AsyncTradePriceUnavailable()
+					Else
+					{
+						SendInput, {ESC}
+						LLK_ToolTip(Lang_Trans("global_error"),,,,, "Red")
+					}
 					Return
 				}
 
@@ -1126,11 +1168,41 @@ AsyncTradePriceStep(amount, minchange, ByRef target_amount, ByRef reduction)
 	Return 1
 }
 
-AsyncTradeApplyPrice(amount, currency, currency_current)
+AsyncTradePriceFieldMatches(text, expected)
+{
+	local
+
+	text := Trim(text, " `t`r`n")
+	Return RegExMatch(text, "^\d+(?:\.\d+)?$") && (expected > 0) && (text + 0 = expected + 0)
+}
+
+AsyncTradePriceDialogReady(expected)
 {
 	local
 	global vars
 
+	If !WinActive("ahk_id " vars.hwnd.poe_client)
+		Return 0
+	; The game selects the amount when opening this dialog. Never trust stale clipboard contents.
+	Clipboard := ""
+	SendInput, ^{c}
+	ClipWait, 0.1
+	Return !ErrorLevel && AsyncTradePriceFieldMatches(Clipboard, expected)
+}
+
+AsyncTradePriceUnavailable()
+{
+	LLK_ToolTip("item locked / price dialog unavailable", 1.5,,,, "Red")
+}
+
+AsyncTradeApplyPrice(amount, currency, currency_current, amount_current := "")
+{
+	local
+	global vars
+
+	; Recheck after price calculation, which may have waited for an economy refresh.
+	If vars.poe_version && !AsyncTradePriceDialogReady(amount_current)
+		Return 0
 	Clipboard := "", Clipboard := amount
 	ClipWait, 0.1
 	If ErrorLevel

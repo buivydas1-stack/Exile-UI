@@ -1269,8 +1269,17 @@ AsyncTradeItemHeight(item)
 		, "one hand axes": 3, "one hand maces": 3, "one hand swords": 3, "sceptres": 3, "wands": 3, "daggers": 3, "flails": 3, "quivers": 3
 		, "foci": 3, "shields": 3, "bucklers": 2, "claws": 2, "talismans": 2, "traptools": 2, "flasks": 2}
 
+	; Relics have several shapes within one class; copied magic names may retain their affixes.
+	; Dimensions verified against RePoE base_items.json and the live Amphora price dialog (2026-09-12).
+	static relic_heights2 := {"Urn Relic": 2, "Amphora Relic": 3, "Vase Relic": 4, "Seal Relic": 1
+		, "Coffer Relic": 2, "Tapestry Relic": 1, "Incense Relic": 1}
+
 	If vars.poe_version && IsObject(item)
 	{
+		If (item.class = "relics") || (item.class = "relic")
+			For base, height in relic_heights2
+				If RegExMatch(item.itembase "`n" item.name, "i)\b" base "\b")
+					Return height
 		If (item.class = "shields") && (InStr(item.itembase, "Tower Shield") || InStr(item.itembase, "Glacial Fortress") || item.itembase = "Golden Shield")
 			Return 4
 		If (item.class = "bucklers") && (item.itembase = "Runemastered Venerable Defender")

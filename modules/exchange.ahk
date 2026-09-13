@@ -862,6 +862,13 @@ AsyncTradeReprice(mode := "", tooltip := "")
 				AsyncTrade(), LLK_ToolTip(Lang_Trans("async_listing"),,,,, "Lime")
 				Return
 			}
+			; Returning an item needs no price dialog or price-field checks.
+			If AsyncTradeShouldReclaim(vars.poe_version, mode, array.1, array.2)
+			{
+				Sleep, % vars.poe_version ? 15 : 20
+				SendInput, ^{LButton}
+				Return
+			}
 			; A locked merchant item still copies its note, but right-click does not open the price field.
 			If vars.poe_version && (mode = "sell")
 			{
@@ -874,22 +881,6 @@ AsyncTradeReprice(mode := "", tooltip := "")
 					Return
 				}
 				price_dialog_open := 1
-			}
-			If AsyncTradeShouldReclaim(vars.poe_version, mode, array.1, array.2)
-			{
-				If price_dialog_open
-				{
-					SendInput, {ESC}
-					Sleep, 30
-					If AsyncTradePriceDialogReady(array.1)
-					{
-						LLK_ToolTip("price dialog still open", 1.5,,,, "Red")
-						Return
-					}
-				}
-				Sleep, % vars.poe_version ? 15 : 20
-				SendInput, ^{LButton}
-				Return
 			}
 			If !price_dialog_open
 			{

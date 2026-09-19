@@ -198,7 +198,7 @@ Economy_Update(type := "currency", minutes := 60)
 	global vars, settings
 
 	timestamp := vars.economy[type].timestamp, league := settings.general.league.Clone(), league := (vars.poe_version ? vars.leagues[league.1].trade[league.3] : vars.leagues[league.1].trade.normal[league.4])
-	If (timestamp.2 != "failed" && (!IsNumber(timestamp) || LLK_TimeElapsed(timestamp) > minutes)) || (timestamp.2 = "failed" && LLK_TimeElapsed(timestamp.1) > 10)
+	If (vars.poe_version && vars.economy[type].league != league) || (timestamp.2 != "failed" && (!IsNumber(timestamp) || LLK_TimeElapsed(timestamp) > minutes)) || (timestamp.2 = "failed" && LLK_TimeElapsed(timestamp.1) > 10)
 	{
 		If !IsNumber(vars.stash[type].timestamp) || (vars.stash[type].league != league) || (LLK_TimeElapsed(vars.stash[type].timestamp) > minutes)
 		{
@@ -206,11 +206,11 @@ Economy_Update(type := "currency", minutes := 60)
 			success := Stash_PriceFetch(type)
 			LLK_Overlay(vars.hwnd.tooltip_stashprices, "destroy")
 		}
-		If success || IsNumber(vars.stash[type].timestamp) && (LLK_TimeElapsed(vars.stash[type].timestamp) <= minutes)
+		If success || IsNumber(vars.stash[type].timestamp) && (!vars.poe_version || vars.stash[type].league = league) && (LLK_TimeElapsed(vars.stash[type].timestamp) <= minutes)
 		{
-			vars.economy[type] := {"timestamp": A_NowUTC}, ini := IniBatchRead("data\global\[stash-ninja] prices" vars.poe_version ".ini", type)
+			vars.economy[type] := {"timestamp": (vars.poe_version ? vars.stash[type].timestamp : A_NowUTC), "league": league}, ini := IniBatchRead("data\global\[stash-ninja] prices" vars.poe_version ".ini", type)
 			For key, val in ini[type]
-				If !InStr(key, "_trend")
+				If !InStr(key, "_trend") && (!vars.poe_version || (key != "timestamp" && key != "league"))
 					vars.economy[type][key] := StrSplit(val, ",", " ")[(vars.poe_version ? 2 : 1)]
 			If (type = "currency")
 			{
@@ -228,7 +228,7 @@ Economy_Update(type := "currency", minutes := 60)
 				vars.economy.names[key] := val
 		}
 		Else If !success
-			vars.economy[type] := {"timestamp": [A_NowUTC, "failed"]}
+			vars.economy[type] := {"timestamp": [A_NowUTC, "failed"], "league": league}
 	}
 }
 

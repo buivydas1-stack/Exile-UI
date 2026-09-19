@@ -440,6 +440,7 @@ Stash_PriceFetch(tab)
 			URL := "https://poe.ninja/poe2/api/economy/exchange/current/overview?league=" league "&type=" type
 		Else data_type := (InStr("fragments,currency", tab) ? "currency" : "item") "/overview", URL := "https://poe.ninja/poe1/api/economy/exchange/current/overview?league=" league "&type=" type
 
+		prices := ""
 		Try prices := HTTPtoVar(URL)
 		If !(SubStr(prices, 1, 1) . SubStr(prices, 0) = "{}")
 			Return 0
@@ -447,7 +448,7 @@ Stash_PriceFetch(tab)
 		If !prices.lines.Count()
 			Return 0
 		If (A_Index = 1)
-			ini_dump := "timestamp=" timestamp "`nleague=" StrReplace(league, "+", " "), ini_dump2 := ""
+			ini_dump := "timestamp=" timestamp "`nleague=" StrReplace(league, "+", " "), ini_dump2 := "", liquidity_dump := ini_dump
 		If !vars.poe_version && !prices.lines.Count() || vars.poe_version && !prices.items.Count()
 			Return 0
 		If (A_Index = 1)
@@ -459,6 +460,8 @@ Stash_PriceFetch(tab)
 		core := prices.core
 		For index, val in prices.lines
 		{
+			If vars.poe_version
+				liquidity_dump .= "`n" val.id "=""" val.primaryValue ", " val.volumePrimaryValue """"
 			check := LLK_HasVal(vars.stash, val.id,,,, 1), name := LLK_HasVal(vars.stash[check], val.id,,,, 1), trend := ""
 			If !vars.poe_version
 				price := (core.primary = "chaos" ? val.primaryValue : val.primaryValue * core.rates.divine) ", 0, " (core.primary = "chaos" ? val.primaryValue * core.rates.divine : val.primaryValue)
@@ -486,6 +489,11 @@ Stash_PriceFetch(tab)
 		{
 			IniWrite, % ini_dump, % "data\global\[stash-ninja] prices" vars.poe_version ".ini", % tab
 			IniWrite, % ini_dump2, % "data\global\[stash-ninja] prices" vars.poe_version ".ini", % tab " names"
+			If vars.poe_version
+			{
+				IniDelete, % "data\global\[stash-ninja] prices" vars.poe_version ".ini", % tab " liquidity"
+				IniWrite, % liquidity_dump, % "data\global\[stash-ninja] prices" vars.poe_version ".ini", % tab " liquidity"
+			}
 			vars.stash[tab].timestamp := timestamp, vars.stash[tab].league := StrReplace(league, "+", " ")
 		}
 	}

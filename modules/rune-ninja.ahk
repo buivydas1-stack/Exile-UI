@@ -63,6 +63,21 @@ Runeshape_OCR()
 	Runeshape_GUI()
 }
 
+Runeshape_Price(price, stack, liquidity, timestamp, league, expected_league)
+{
+	local
+	; Volume/value estimates item units, not distinct trades or available sell orders.
+	; Do not promote thin markets to the green highest-value recommendation.
+	If !IsNumber(price) || (price <= 0) || !IsNumber(timestamp) || (league != expected_league) || (LLK_TimeElapsed(timestamp) > 60)
+		Return "???"
+	values := StrSplit(liquidity, ",", " ")
+	If !IsNumber(values.1) || (values.1 <= 0) || !IsNumber(values.2) || (values.2 < 0)
+		Return "???"
+	If (values.2 / values.1 < Max(10, stack))
+		Return "low vol"
+	Return price * stack
+}
+
 Runeshape_GUI()
 {
 	local
@@ -76,7 +91,7 @@ Runeshape_GUI()
 	Gui, %GUI%: Color, % "Purple"
 	WinSet, TransColor, Purple
 
-	dBox := Round(vars.client.h * (2/45)) - 4, dBox2 := Round(vars.client.h * (3/40)) - 4, text := vars.runeshaping.text, prices := [], max_price := 0
+	dBox := Round(vars.client.h * (2/45)) - 4, dBox2 := Round(vars.client.h * (3/40)) - 4, text := vars.runeshaping.text, prices := [], max_price := 0, liquidity := {}
 	vars.hwnd.runeshaping := {"main": hwnd_runeshaping}
 
 	For index, object in text
@@ -98,10 +113,21 @@ Runeshape_GUI()
 			Else ID := vars.stash[check][object.line].ID
 			check := (InStr(check, "runes") ? "runes" : (InStr(check, "currency") ? "currency" : check))
 			Economy_Update(check)
-			price := vars.economy[check][ID], stack := (IsNumber(object.stack) ? object.stack : 1), price *= stack
+			stack := (IsNumber(object.stack) ? object.stack : 1)
+			If vars.poe_version
+			{
+				If !liquidity.HasKey(check)
+				{
+					ini := IniBatchRead("data\global\[stash-ninja] prices" vars.poe_version ".ini", check " liquidity")
+					liquidity[check] := ini[check " liquidity"]
+				}
+				price := Runeshape_Price(vars.economy[check][ID], stack, liquidity[check][ID], liquidity[check].timestamp, liquidity[check].league, vars.economy[check].league)
+			}
+			Else price := vars.economy[check][ID] * stack
 			If IsNumber(price)
 				price := Round(price, 1), max_price := Max(max_price, price)
-			Else price := "???"
+			Else If (price != "low vol")
+				price := "???"
 			prices.Push(price)
 		}
 		Else prices.Push("???")
@@ -111,7 +137,7 @@ Runeshape_GUI()
 	For index, price in prices
 	{
 		hText := (text[index].tier ? dBox2 : dBox), fHeight := settings.runeshaping.fHeight, offset := (fHeight >= hText ? 0 : hText//2 - fHeight//2)
-		Gui, %GUI%: Add, Text, % "x0 y" (index = 1 ? offset : "+" offset + 4) " w" settings.runeshaping.fWidth * Max(5, StrLen(StrReplace(Round(max_price, (max_price >= 1000 ? 0 : 1)), ".")) + 1) " 0x200 Right Border BackgroundTrans" (fHeight >= hText ? " h" hText : ""), % " " (IsNumber(price) ? Round(price, (price >= 1000 ? 0 : 1)) : price) " "
+		Gui, %GUI%: Add, Text, % "x0 y" (index = 1 ? offset : "+" offset + 4) " w" settings.runeshaping.fWidth * Max(8, StrLen(StrReplace(Round(max_price, (max_price >= 1000 ? 0 : 1)), ".")) + 1) " 0x200 Right Border BackgroundTrans" (fHeight >= hText ? " h" hText : ""), % " " (IsNumber(price) ? Round(price, (price >= 1000 ? 0 : 1)) : price) " "
 		color := (!IsNumber(price) ? settings.runeshaping.color_unknown : (!IsNumber(text[index].stack) ? settings.runeshaping.color_stack : (price = max_price ? settings.runeshaping.color_high : "White")))
 		Gui, %GUI%: Add, Progress, % "Disabled xp yp wp hp Border cBlack Background" color, 100
 		Gui, %GUI%: Add, Text, % "Hidden xp yp-" offset " w2 h" hText

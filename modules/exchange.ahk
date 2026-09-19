@@ -1103,6 +1103,11 @@ AsyncTradePriceTarget(amount, currency, minchange, ByRef target_amount, ByRef ta
 	global vars
 
 	target_amount := target_currency := error := "", amount += 0
+	If vars.poe_version && (currency = "exalted") && (amount > 1) && (amount <= 10)
+	{
+		target_amount := (amount <= 5) ? 1 : 5, target_currency := currency
+		Return 1
+	}
 	If !vars.poe_version && (currency = "alt") && (amount > 1) && (amount <= 5)
 	{
 		target_amount := (amount <= 3) ? 1 : 3, target_currency := currency

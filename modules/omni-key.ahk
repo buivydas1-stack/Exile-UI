@@ -546,7 +546,7 @@ Omni_ContextMenuPick(cHWND)
 	Else If (check = "clustercalc")
 		Run, % "https://clusters.poetools.dev/"
 	Else If (check = "craftofexile")
-		Run, % "https://www.craftofexile.com/?game=poe" (vars.poe_version ? "2" : "1")
+		Run, % (vars.poe_version ? "https://beta.craftofexile.com/?game=poe2" : "https://www.craftofexile.com/?game=poe1")
 	Else If (check = "seed")
 		Legion_Parse(), Legion_GUI()
 	Else If (check = "vilsol")

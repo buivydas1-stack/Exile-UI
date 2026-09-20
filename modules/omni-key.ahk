@@ -391,6 +391,15 @@ Omni_ContextMenu()
 				vars.hwnd.omni_context.wiki_exact := hwnd, vars.omni_context[hwnd] := StrReplace(item[item.itembase && item.rarity != Lang_Trans("items_unique") ? "itembase" : "name"], "foulborn ")
 			}
 
+			; Unique quivers still need their class reference, without the crafting links below.
+			If vars.poe_version && (item.rarity = Lang_Trans("items_unique")) && (item.class = "quivers")
+			{
+				Gui, omni_context: Add, Text, % "Section" (hwnd ? " xs " : " ") "gOmni_ContextMenuPick HWNDhwnd" style, % "wiki: Quivers"
+				ControlGetPos,,, w2,,, % "ahk_id " hwnd
+				vars.hwnd.omni_context.wiki_class := hwnd, vars.omni_context[hwnd] := "quivers"
+				width := (Max(w, w1, w2) > width) ? Max(w, w1, w2) : width
+			}
+
 			If (item.rarity != Lang_Trans("items_unique")) && !Blank(item.class)
 			&& (settings.general.lang_client = "english" && !InStr(item.class, "currency") || (LLK_HasVal(db.item_bases._classes, item.class) || vars.poe_version && (vars.omnikey.poedb[item.class] || item.class = "augment")) || LLK_PatternMatch(item.name, "", ["Essence of", "Scarab", "Catalyst", " Oil", "Memory of "])) || RegExMatch(item.name, "^(Potent\s){0,1}(Diluted|Liquid|Concentrated)\s")
 			{
@@ -510,6 +519,8 @@ Omni_ContextMenuPick(cHWND)
 		class := StrReplace(class, "Jewels", "jewel"), class := InStr(item.class, "heist ") ? "Rogue's_equipment#" . StrReplace(item.class, "heist ") : class
 		If vars.poe_version && (check = "wiki_class") && (class = "life_flasks")
 			class := "Life_flask"
+		If vars.poe_version && (check = "wiki_class") && (class = "quivers")
+			class := "Quiver"
 		Loop, Parse, class, `|
 			Run, % "https://www.poe" Trim(vars.poe_version, " ") "wiki.net/wiki/" . A_LoopField
 	}

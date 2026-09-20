@@ -391,12 +391,15 @@ Omni_ContextMenu()
 				vars.hwnd.omni_context.wiki_exact := hwnd, vars.omni_context[hwnd] := StrReplace(item[item.itembase && item.rarity != Lang_Trans("items_unique") ? "itembase" : "name"], "foulborn ")
 			}
 
-			; Unique quivers still need their class reference, without the crafting links below.
+			; Unique quivers also expose the same modifier reference as rare quivers.
 			If vars.poe_version && (item.rarity = Lang_Trans("items_unique")) && (item.class = "quivers")
 			{
 				Gui, omni_context: Add, Text, % "Section" (hwnd ? " xs " : " ") "gOmni_ContextMenuPick HWNDhwnd" style, % "wiki: Quivers"
 				ControlGetPos,,, w2,,, % "ahk_id " hwnd
 				vars.hwnd.omni_context.wiki_class := hwnd, vars.omni_context[hwnd] := "quivers"
+				Gui, omni_context: Add, Text, % "Section xs gOmni_ContextMenuPick HWNDhwnd1" style, % "poe.db: " Lang_Trans("system_poedb_lang", 2)
+				ControlGetPos,,, w3,,, % "ahk_id " hwnd1
+				vars.hwnd.omni_context.poedb := hwnd1
 				width := (Max(w, w1, w2) > width) ? Max(w, w1, w2) : width
 			}
 

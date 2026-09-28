@@ -898,10 +898,16 @@ AsyncTradeReprice(mode := "", tooltip := "")
 					LLK_ToolTip((error = "minimum") ? (vars.poe_version ? "minimum price: 1 exalted" : "minimum price: 1 alteration") : Lang_Trans("async_pricefailed", 3),,,,, "Yellow")
 					Return
 				}
-				If !AsyncTradeApplyPrice(price_new, currency_new, array.2, array.1)
+				apply_result := AsyncTradeApplyPrice(price_new, currency_new, array.2, array.1)
+				If (apply_result != 1)
 				{
 					If vars.poe_version
-						AsyncTradePriceUnavailable()
+					{
+						If (apply_result = -1)
+							LLK_ToolTip("currency not verified; check price manually", 1.5,,,, "Red")
+						Else
+							AsyncTradePriceUnavailable()
+					}
 					Else
 					{
 						SendInput, {ESC}
@@ -1245,10 +1251,57 @@ AsyncTradeSelectCurrency(currency)
 	Sleep, % vars.poe_version ? 20 : 30
 	Click, % coords.x " " coords.selection_y
 	Sleep, % vars.poe_version ? 20 : 30
+	If vars.poe_version && !AsyncTradeCurrencyVerified(currency, coords)
+	{
+		Sleep, 15
+		If !AsyncTradeCurrencyVerified(currency, coords)
+		{
+			MouseMove, %xMouse%, %yMouse%, 0
+			Return -1
+		}
+	}
 	Click, % coords.confirm_x " " coords.y
 	Sleep, % vars.poe_version ? 20 : 30
 	MouseMove, %xMouse%, %yMouse%, 0
 	Return 1
+}
+
+AsyncTradeCurrencyVerified(currency, coords)
+{
+	local
+	global vars
+	; Gold text pixels in the selected-currency field, sampled from the 1440p PoE2 dialog.
+	static samples := {"exalted": {"on": "7,14|16,21|29,11|35,19|29,22|42,5|49,9|59,17|77,5|76,10|71,12|70,16|78,19|71,20|74,22|95,7|94,20|100,7|119,5|103,9|103,14|103,19|120,9|124,11|120,14|127,13|120,19|127,19|122,22"
+		, "off": "19,5|12,8|19,10|14,12|13,19|15,16|19,21|26,11|37,11|28,14|39,15|31,19|38,21|55,11|46,14|46,19|54,19|62,13|68,12|62,18|86,7|91,7|82,11|89,10|96,11"}
+		, "chaos": {"on": "19,5|38,11|38,21|65,18|89,9|96,11|97,15|81,19|89,19|107,5|107,10|107,15|114,14|114,19|107,20"
+		, "off": "4,7|13,10|6,13|15,13|13,19|16,21|29,11|22,13|34,14|22,19|29,16|35,19|29,21|41,5|41,11|48,10|42,15|49,14|56,12|58,15|49,19|59,19|42,20|56,21|77,5"}}
+
+	If !samples.HasKey(currency) || !WinActive("ahk_id " vars.hwnd.poe_client)
+		Return 0
+	scale := vars.client.h / 1439
+	x0 := Round(coords.x - Round(vars.client.h * 0.074)), y0 := coords.y - Round(vars.client.h * 0.012)
+	For _, shift In [[0, 0], [1, -1], [-1, 0], [0, -1], [1, 0], [0, 1], [-1, -1], [1, 1], [-1, 1]]
+	{
+		matches := total := 0
+		For kind, positions In samples[currency]
+		{
+			expected := (kind = "on")
+			For _, position In StrSplit(positions, "|")
+			{
+				point := StrSplit(position, ",")
+				x := x0 + Round(point.1 * scale) + shift.1, y := y0 + Round(point.2 * scale) + shift.2
+				PixelGetColor, pixel, %x%, %y%, RGB
+				If ErrorLevel
+					Return 0
+				r := (pixel >> 16) & 255, g := (pixel >> 8) & 255, b := pixel & 255
+				bright := (r + g + b > 300) && (r * 10 > b * 9)
+				matches += (bright = expected), total++
+			}
+		}
+		If (matches * 5 >= total * 4)
+			Return 1
+	}
+	Return 0
 }
 
 AsyncTradeItemHeight(item)

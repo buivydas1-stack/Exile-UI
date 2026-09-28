@@ -1094,7 +1094,7 @@ AsyncTradeShouldReclaim(poe_version, mode, amount, currency)
 {
 	local
 
-	Return (mode = "sell") && (amount = 1) && (currency = (poe_version ? "exalted" : "alt"))
+	Return (mode = "sell") && (amount = 1) && (poe_version ? (currency = "exalted" || currency = "vaal") : (currency = "alt"))
 }
 
 AsyncTradePriceTarget(amount, currency, minchange, ByRef target_amount, ByRef target_currency, ByRef error)

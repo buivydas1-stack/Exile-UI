@@ -1202,6 +1202,7 @@ AsyncTradeApplyPrice(amount, currency, currency_current, amount_current := "")
 	local
 	global vars
 
+	vars.async.price_dialog_failed := 0
 	; Recheck after price calculation, which may have waited for an economy refresh.
 	If vars.poe_version && !AsyncTradePriceDialogReady(amount_current)
 		Return 0
@@ -1253,10 +1254,13 @@ AsyncTradeSelectCurrency(currency)
 	If vars.poe_version
 	{
 		start := A_TickCount
-		While !AsyncTradeCurrencyVerified(currency, coords)
+		While !AsyncTradeCurrencyVerified(currency, coords, A_TickCount - start >= 20)
 		{
 			If (A_TickCount - start >= 70)
 			{
+				If AsyncTradeCurrencyVerified(currency, coords, 1, 1)
+					Break
+				vars.async.price_dialog_failed := A_TickCount
 				MouseMove, %xMouse%, %yMouse%, 0
 				Return -1
 			}
@@ -1270,7 +1274,7 @@ AsyncTradeSelectCurrency(currency)
 	Return 1
 }
 
-AsyncTradeCurrencyVerified(currency, coords)
+AsyncTradeCurrencyVerified(currency, coords, wide := 0, save_failure := 0)
 {
 	local
 	global vars
@@ -1279,7 +1283,7 @@ AsyncTradeCurrencyVerified(currency, coords)
 		, "off": "19,5|12,8|19,10|14,12|13,19|15,16|19,21|26,11|37,11|28,14|39,15|31,19|38,21|55,11|46,14|46,19|54,19|62,13|68,12|62,18|86,7|91,7|82,11|89,10|96,11"}
 		, "chaos": {"on": "19,5|38,11|38,21|65,18|89,9|96,11|97,15|81,19|89,19|107,5|107,10|107,15|114,14|114,19|107,20"
 		, "off": "4,7|13,10|6,13|15,13|13,19|16,21|29,11|22,13|34,14|22,19|29,16|35,19|29,21|41,5|41,11|48,10|42,15|49,14|56,12|58,15|49,19|59,19|42,20|56,21|77,5"}}
-	static shifts := [[0, 0], [1, -1], [-1, 0], [0, -1], [1, 0], [0, 1], [-1, -1], [1, 1], [-1, 1]]
+	static shifts := [[0, 0], [1, -1], [-1, 0], [0, -1], [1, 0], [0, 1], [-1, -1], [1, 1], [-1, 1]], shifts_wide := []
 
 	If !samples.HasKey(currency) || !WinActive("ahk_id " vars.hwnd.poe_client)
 		Return 0
@@ -1294,10 +1298,22 @@ AsyncTradeCurrencyVerified(currency, coords)
 			}
 		samples[currency].points := points
 	}
+	If wide && !shifts_wide.Length()
+		Loop, 7
+		{
+			dy := A_Index - 4
+			Loop, 13
+			{
+				dx := A_Index - 7
+				If (Abs(dx) > 1 || Abs(dy) > 1)
+					shifts_wide.Push([dx, dy])
+			}
+		}
 	scale := vars.client.h / 1439
 	x0 := Round(coords.x - Round(vars.client.h * 0.074)), y0 := coords.y - Round(vars.client.h * 0.012)
-	w := Round(130 * scale) + 2, h := Round(25 * scale) + 2
-	pBitmap := Gdip_BitmapFromScreen((x0 - 1) "|" (y0 - 1) "|" w "|" h)
+	margin_x := Round(6 * scale) + 1, margin_y := Round(3 * scale) + 1
+	w := Round(130 * scale) + 2 * margin_x, h := Round(25 * scale) + 2 * margin_y
+	pBitmap := Gdip_BitmapFromScreen((x0 - margin_x) "|" (y0 - margin_y) "|" w "|" h)
 	If (pBitmap <= 0)
 		Return 0
 	If Gdip_LockBits(pBitmap, 0, 0, w, h, stride, scan, bitmapData, 1)
@@ -1306,24 +1322,35 @@ AsyncTradeCurrencyVerified(currency, coords)
 		Return 0
 	}
 	verified := 0
-	For _, shift In shifts
+	For _, group In (wide ? [shifts, shifts_wide] : [shifts])
 	{
-		matches := 0
-		For _, point In samples[currency].points
+		For _, shift In group
 		{
-			x := 1 + Round(point.1 * scale) + shift.1, y := 1 + Round(point.2 * scale) + shift.2
-			pixel := Gdip_GetLockBitPixel(scan, x, y, stride)
-			r := (pixel >> 16) & 255, g := (pixel >> 8) & 255, b := pixel & 255
-			bright := (r + g + b > 300) && (r * 10 > b * 9)
-			matches += (bright = point.3)
+			on_sum := off_sum := on_count := off_count := 0
+			For _, point In samples[currency].points
+			{
+				x := margin_x + Round(point.1 * scale) + shift.1, y := margin_y + Round(point.2 * scale) + shift.2
+				pixel := Gdip_GetLockBitPixel(scan, x, y, stride)
+				light := ((pixel >> 16) & 255) + ((pixel >> 8) & 255) + (pixel & 255)
+				If point.3
+					on_sum += light, on_count++
+				Else off_sum += light, off_count++
+			}
+			If (on_sum > on_count * 30) && (on_sum * off_count > off_sum * on_count * 6)
+			{
+				verified := 1
+				Break
+			}
 		}
-		If (matches * 5 >= samples[currency].points.Length() * 4)
-		{
-			verified := 1
+		If verified
 			Break
-		}
 	}
 	Gdip_UnlockBits(pBitmap, bitmapData)
+	If !verified && save_failure
+	{
+		FileDelete, % A_Temp "\exile-ui-vaal-currency-failure.png"
+		Gdip_SaveBitmapToFile(pBitmap, A_Temp "\exile-ui-vaal-currency-failure.png", 100)
+	}
 	Gdip_DisposeImage(pBitmap)
 	Return verified
 }

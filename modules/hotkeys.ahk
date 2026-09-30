@@ -111,6 +111,14 @@ Hotkeys_ESC()
 		Gui, DDL: Hide
 	Else If WinExist("Exile UI: RGB-Picker")
 		vars.RGB_picker.cancel := 1
+	Else If vars.poe_version && vars.async.price_dialog_failed && (A_TickCount - vars.async.price_dialog_failed < 30000) && WinExist("ahk_id " vars.hwnd.poe_client)
+	{
+		vars.async.price_dialog_failed := 0
+		WinActivate, % "ahk_id " vars.hwnd.poe_client
+		SendInput, {ESC down}
+		KeyWait, ESC
+		SendInput, {ESC up}
+	}
 	Else If vars.hwnd.async.main && !vars.hwnd.async_pricing.main && WinExist("ahk_id " vars.hwnd.async.main)
 		AsyncTrade("close")
 	Else If vars.hwnd.async_logs.main && WinExist("ahk_id " vars.hwnd.async_logs.main)

@@ -1279,6 +1279,7 @@ AsyncTradeCurrencyVerified(currency, coords, wide := 0, save_failure := 0)
 	local
 	global vars
 	; Gold text pixels in the selected-currency field, sampled from the 1440p PoE2 dialog.
+	; coords.y already includes item height; the label offset is the same for short and tall items.
 	static samples := {"exalted": {"on": "7,14|16,21|29,11|35,19|29,22|42,5|49,9|59,17|77,5|76,10|71,12|70,16|78,19|71,20|74,22|95,7|94,20|100,7|119,5|103,9|103,14|103,19|120,9|124,11|120,14|127,13|120,19|127,19|122,22"
 		, "off": "19,5|12,8|19,10|14,12|13,19|15,16|19,21|26,11|37,11|28,14|39,15|31,19|38,21|55,11|46,14|46,19|54,19|62,13|68,12|62,18|86,7|91,7|82,11|89,10|96,11"}
 		, "chaos": {"on": "19,5|38,11|38,21|65,18|89,9|96,11|97,15|81,19|89,19|107,5|107,10|107,15|114,14|114,19|107,20"
@@ -1310,7 +1311,7 @@ AsyncTradeCurrencyVerified(currency, coords, wide := 0, save_failure := 0)
 			}
 		}
 	scale := vars.client.h / 1439
-	x0 := Round(coords.x - Round(vars.client.h * 0.074)), y0 := coords.y - Round(vars.client.h * 0.012) - (AsyncTradeItemHeight(vars.omnikey.item) <= 2 ? Round(vars.client.h * 0.003) : 0)
+	x0 := Round(coords.x - Round(vars.client.h * 0.074)), y0 := coords.y - Round(vars.client.h * 0.012)
 	margin_x := Round(6 * scale) + 1, margin_y := Round(3 * scale) + 1
 	w := Round(130 * scale) + 2 * margin_x, h := Round(25 * scale) + 2 * margin_y
 	pBitmap := Gdip_BitmapFromScreen((x0 - margin_x) "|" (y0 - margin_y) "|" w "|" h)

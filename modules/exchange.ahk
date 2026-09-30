@@ -1279,7 +1279,7 @@ AsyncTradeCurrencyVerified(currency, coords, wide := 0, save_failure := 0)
 	local
 	global vars
 	; Gold text pixels in the selected-currency field, sampled from the 1440p PoE2 dialog.
-	; coords.y already includes item height; the label offset is the same for short and tall items.
+	; One-slot labels sit slightly higher; two-slot labels align with taller items.
 	static samples := {"exalted": {"on": "7,14|16,21|29,11|35,19|29,22|42,5|49,9|59,17|77,5|76,10|71,12|70,16|78,19|71,20|74,22|95,7|94,20|100,7|119,5|103,9|103,14|103,19|120,9|124,11|120,14|127,13|120,19|127,19|122,22"
 		, "off": "19,5|12,8|19,10|14,12|13,19|15,16|19,21|26,11|37,11|28,14|39,15|31,19|38,21|55,11|46,14|46,19|54,19|62,13|68,12|62,18|86,7|91,7|82,11|89,10|96,11"}
 		, "chaos": {"on": "19,5|38,11|38,21|65,18|89,9|96,11|97,15|81,19|89,19|107,5|107,10|107,15|114,14|114,19|107,20"
@@ -1311,7 +1311,7 @@ AsyncTradeCurrencyVerified(currency, coords, wide := 0, save_failure := 0)
 			}
 		}
 	scale := vars.client.h / 1439
-	x0 := Round(coords.x - Round(vars.client.h * 0.074)), y0 := coords.y - Round(vars.client.h * 0.012)
+	x0 := Round(coords.x - Round(vars.client.h * 0.074)), y0 := coords.y - Round(vars.client.h * 0.012) - (AsyncTradeItemHeight(vars.omnikey.item) = 1 ? Round(vars.client.h * 0.003) : 0)
 	margin_x := Round(6 * scale) + 1, margin_y := Round(3 * scale) + 1
 	w := Round(130 * scale) + 2 * margin_x, h := Round(25 * scale) + 2 * margin_y
 	pBitmap := Gdip_BitmapFromScreen((x0 - margin_x) "|" (y0 - margin_y) "|" w "|" h)
@@ -1365,7 +1365,7 @@ AsyncTradeItemHeight(item)
 	, 31: 3, 32: 4, 33: 4, 34: 2, 35: 3, 36: 2, 37: 2, 38: 2, 39: 2}
 
 	; PoE2 classes use names, not the PoE1 numeric base index. Sizes and exceptions from https://repoe-fork.github.io/poe2/base_items.json (2026-09-08).
-	static heights2 := {"amulets": 1, "belts": 1, "rings": 1, "jewels": 1, "charms": 1, "body armours": 3, "boots": 2, "gloves": 2, "helmets": 2
+	static heights2 := {"amulets": 1, "belts": 1, "rings": 1, "jewels": 1, "charms": 1, "tablet": 1, "tablets": 1, "body armours": 3, "boots": 2, "gloves": 2, "helmets": 2
 		, "bows": 4, "crossbows": 4, "quarterstaves": 4, "staves": 4, "spears": 4, "two hand axes": 4, "two hand maces": 4, "two hand swords": 4
 		, "one hand axes": 3, "one hand maces": 3, "one hand swords": 3, "sceptres": 3, "wands": 3, "daggers": 3, "flails": 3, "quivers": 3
 		, "foci": 3, "shields": 3, "bucklers": 2, "claws": 2, "talismans": 2, "traptools": 2, "flasks": 2}

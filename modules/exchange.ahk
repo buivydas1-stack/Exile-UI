@@ -1310,7 +1310,7 @@ AsyncTradeCurrencyVerified(currency, coords, wide := 0, save_failure := 0)
 			}
 		}
 	scale := vars.client.h / 1439
-	x0 := Round(coords.x - Round(vars.client.h * 0.074)), y0 := coords.y - Round(vars.client.h * 0.012)
+	x0 := Round(coords.x - Round(vars.client.h * 0.074)), y0 := coords.y - Round(vars.client.h * 0.012) - (AsyncTradeItemHeight(vars.omnikey.item) <= 2 ? Round(vars.client.h * 0.003) : 0)
 	margin_x := Round(6 * scale) + 1, margin_y := Round(3 * scale) + 1
 	w := Round(130 * scale) + 2 * margin_x, h := Round(25 * scale) + 2 * margin_y
 	pBitmap := Gdip_BitmapFromScreen((x0 - margin_x) "|" (y0 - margin_y) "|" w "|" h)

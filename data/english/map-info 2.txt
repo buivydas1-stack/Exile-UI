@@ -265,6 +265,12 @@ type	=	monsters
 text	=	ele ailments: +%
 ID	=	044
 
+;## Current client wording is singular; retain the plural alias and existing modifier ID.
+[Monster have # increased Elemental Ailment Application]
+type	=	monsters
+text	=	ele ailments: +%
+ID	=	044
+
 [Monsters fire # additional Projectiles]
 type	=	monsters
 text	=	extra proj: +

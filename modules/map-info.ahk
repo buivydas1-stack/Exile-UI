@@ -599,7 +599,7 @@ Mapinfo_Parse2(mode)
 					If InStr(key, "|")
 						map_mods[key] .= (A_Index = 1 ? "" : "/") . parsed_lines[A_LoopField]
 					Else map_mods[key] := parsed_lines[A_LoopField]
-				If InStr(val.ID, "044") || (val.ID = 44)
+				If (InStr(val.ID, "044") || (val.ID = 44)) && InStr(map_mods[key], "/")
 					map_mods[key] := SubStr(map_mods[key], 1, InStr(map_mods[key], "/") - 1) ;freeze/ignite/shock hybrid mod is always X/X/X %, so simply display as X%
 			}
 

@@ -1,0 +1,33 @@
+Item Class: Waystones
+Rarity: Rare
+Cabal Navigation
+Waystone (Tier 15)
+--------
+Revives Available: 0 (augmented)
+Item Rarity: +15% (augmented)
+Pack Size: +24% (augmented)
+Monster Rarity: +41% (augmented)
+Monster Effectiveness: +13% (augmented)
+Waystone Drop Chance: +100% (augmented)
+--------
+Item Level: 80
+--------
+{ Prefix Modifier "Destructive" (Tier: 1) }
+Monsters have 200(200-240)% increased Critical Hit Chance
+Monsters have +24(21-25)% Critical Damage Bonus
+{ Prefix Modifier "Puncturing" (Tier: 1) }
+Monsters have 15(15-20)% chance to inflict Bleeding on Hit
+{ Prefix Modifier "Precise" (Tier: 1) }
+Monsters have 38(30-40)% increased Accuracy Rating
+{ Prefix Modifier "Tough" (Tier: 1) }
+23(20-25)% more Monster Life
+{ Suffix Modifier "of Smothering" (Tier: 1) }
+Players have 37(40-36)% less Recovery Rate of Life and Energy Shield
+{ Suffix Modifier "of Obstruction" (Tier: 1) }
+Monsters take 29(26-30)% reduced Extra Damage from Critical Hits
+{ Suffix Modifier "of Slowing" (Tier: 1) }
+Players are periodically Cursed with Temporal Chains — Unscalable Value
+--------
+Can be used in a Map Device, allowing you to enter a Map. Waystones can only be used once.
+--------
+Corrupted

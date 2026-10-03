@@ -69,8 +69,8 @@
 				LLK_Overlay(vars.hwnd.essences.main, "destroy")
 			Case "iteminfo":
 				Iteminfo()
-			Case "waystoneinfo":
-				If settings.features.mapinfo && !vars.omnikey.item.unid && (vars.omnikey.item.rarity != Lang_Trans("items_normal")) && (vars.omnikey.item.rarity != Lang_Trans("items_unique"))
+			Case "mapiteminfo":
+				If (Iteminfo_MapItemKind(vars.omnikey.item) = "waystone") && settings.features.mapinfo && !vars.omnikey.item.unid && (vars.omnikey.item.rarity != Lang_Trans("items_normal")) && (vars.omnikey.item.rarity != Lang_Trans("items_unique"))
 				{
 					If Mapinfo_Parse(1, vars.poe_version)
 						Mapinfo_GUI()
@@ -310,11 +310,11 @@ Omni_Context(mode := 0)
 			If (A_TickCount >= vars.omnikey.start + 200)
 				Return "relics"
 
-	; A waystone hold adds roll information; a short press keeps the existing Map Info action.
-	If settings.features.iteminfo && Iteminfo_IsWaystone(item)
+	; A map-item hold adds Item Info; a waystone short press keeps the existing Map Info action.
+	If settings.features.iteminfo && Iteminfo_MapItemKind(item)
 		While GetKeyState(vars.omnikey.hotkey, "P") || !Blank(vars.omnikey.hotkey2) && GetKeyState(vars.omnikey.hotkey2, "P")
 			If (A_TickCount >= vars.omnikey.start + 100)
-				Return "waystoneinfo"
+				Return "mapiteminfo"
 
 	If (!vars.poe_version && !LLK_PatternMatch(item.name "`n" item.itembase, "", ["Doryani", "Maple"]) && LLK_PatternMatch(item.name "`n" item.itembase, "", ["Map", "Chart", "Invitation", "Blueprint:", "Contract:", "Expedition Logbook"])
 	|| vars.poe_version && LLK_PatternMatch(item.name "`n" item.itembase, "", [Lang_Trans("items_waystone")]))

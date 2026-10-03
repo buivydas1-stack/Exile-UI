@@ -1,0 +1,102 @@
+Item Class: Waystones
+Rarity: Rare
+Arcane Path
+Waystone (Tier 15)
+--------
+Item Rarity: +14% (augmented)
+Item Level: 82
+--------
+{ Prefix Modifier "Fleeting" (Tier: 1) }
+Monsters have 15(10-15)% increased Attack, Cast and Movement Speed
+{ Prefix Modifier "Destructive" (Tier: 1) }
+Monsters have 235(200-240)% increased Critical Hit Chance
+Monsters have +23(21-25)% Critical Damage Bonus
+{ Prefix Modifier "Tough" (Tier: 1) }
+25(20-25)% more Monster Life
+{ Prefix Modifier "Venomous" (Tier: 1) }
+Monsters have 32(27-33)% chance to Poison on Hit
+{ Suffix Modifier "of Exposure" (Tier: 1) }
+-7(-8--6)% maximum Player Resistances
+{ Suffix Modifier "of the Prism" (Tier: 1) }
++31(30-34)% Monster Elemental Resistances
+{ Suffix Modifier "of Drought" (Tier: 1) }
+Players gain 32(35-30)% reduced Flask Charges
+{ Suffix Modifier "Flaming" (Tier: 1) }
+Area has patches of Ignited Ground
+--------
+Can be used in a Map Device, allowing you to enter a Map. Waystones can only be used once.
+--------
+Corrupted
+===
+Item Class: Waystones
+Rarity: Rare
+Ancient Trajectory
+Waystone (Tier 15)
+--------
+Item Level: 82
+--------
+{ Prefix Modifier "Profane" (Tier: 1) }
+Monsters deal 15(15-19)% of Damage as Extra Chaos
+{ Prefix Modifier "Destructive" (Tier: 1) }
+Monsters have 202(200-240)% increased Critical Hit Chance
+Monsters have +22(21-25)% Critical Damage Bonus
+{ Prefix Modifier "Impacting" (Tier: 1) }
+Monsters have 94(90-100)% increased Stun Buildup
+{ Suffix Modifier "Flaming" (Tier: 1) }
+Area has patches of Ignited Ground
+{ Suffix Modifier "of Obstruction" (Tier: 1) }
+Monsters take 26(26-30)% reduced Extra Damage from Critical Hits
+{ Suffix Modifier "of Erosion" (Tier: 1) }
+Players are periodically Cursed with Elemental Weakness — Unscalable Value
+--------
+Corrupted
+===
+Item Class: Waystones
+Rarity: Rare
+Breeding Stone
+Waystone (Tier 16)
+--------
+Item Level: 80
+--------
+{ Prefix Modifier "Frostbitten" }
+Monsters deal 17(15-19)% of Damage as Extra Cold
+{ Prefix Modifier "Tough" }
+23(20-25)% more Monster Life
+{ Prefix Modifier "Destructive" }
+Monsters have 200(200-240)% increased Critical Hit Chance
+Monsters have +21(21-25)% Critical Damage Bonus
+{ Suffix Modifier "of Smothering" }
+Players have 38(40-36)% less Recovery Rate of Life and Energy Shield
+{ Suffix Modifier "of Enduring" (Tier: 1) }
+Monsters are Armoured
+{ Suffix Modifier "of Exposure" }
+-6(-8--6)% maximum Player Resistances
+--------
+Corrupted
+===
+Item Class: Waystones
+Rarity: Rare
+Buried Intent
+Waystone (Tier 15)
+--------
+Item Level: 81
+--------
+{ Prefix Modifier "Tough" (Tier: 1) }
+22(20-25)% more Monster Life
+{ Prefix Modifier "Penetrating" (Tier: 1) }
+Monster Damage Penetrates 13(12-14)% Elemental Resistances
+{ Prefix Modifier "Precise" (Tier: 1) }
+Monsters have 36(30-40)% increased Accuracy Rating
+{ Prefix Modifier "Venomous" (Tier: 1) }
+Monsters have 30(27-33)% chance to Poison on Hit
+{ Suffix Modifier "of the Prism" (Tier: 1) }
++30(30-34)% Monster Elemental Resistances
+{ Suffix Modifier "of Exposure" (Tier: 1) }
+-8(-8--6)% maximum Player Resistances
+{ Suffix Modifier "of the Unwavering" (Tier: 1) }
+Monsters have 72(70-79)% increased Ailment Threshold
+Monsters have 61(60-69)% increased Stun Threshold
+{ Suffix Modifier "of Hexwarding" (Tier: 1) }
+47(50-40)% less effect of Curses on Monsters
+--------
+Corrupted

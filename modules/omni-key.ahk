@@ -69,6 +69,14 @@
 				LLK_Overlay(vars.hwnd.essences.main, "destroy")
 			Case "iteminfo":
 				Iteminfo()
+			Case "waystoneinfo":
+				If settings.features.mapinfo && !vars.omnikey.item.unid && (vars.omnikey.item.rarity != Lang_Trans("items_normal")) && (vars.omnikey.item.rarity != Lang_Trans("items_unique"))
+				{
+					If Mapinfo_Parse(1, vars.poe_version)
+						Mapinfo_GUI()
+				}
+				Else LLK_Overlay(vars.hwnd.mapinfo.main, "destroy")
+				Iteminfo()
 			Case "gemnotepad":
 				text := StrReplace(LLK_ControlGet(vars.hwnd.notepad.note), "`n", "(n)"), text .= (Blank(text) ? "" : "(n)") vars.omnikey.item.name_copy
 				While (SubStr(text, 1, 1) = " ") || (SubStr(text, 1, 3) = "(n)")
@@ -301,6 +309,12 @@ Omni_Context(mode := 0)
 		While GetKeyState(vars.omnikey.hotkey, "P") || !Blank(vars.omnikey.hotkey2) && GetKeyState(vars.omnikey.hotkey2, "P")
 			If (A_TickCount >= vars.omnikey.start + 200)
 				Return "relics"
+
+	; A waystone hold adds roll information; a short press keeps the existing Map Info action.
+	If settings.features.iteminfo && Iteminfo_IsWaystone(item)
+		While GetKeyState(vars.omnikey.hotkey, "P") || !Blank(vars.omnikey.hotkey2) && GetKeyState(vars.omnikey.hotkey2, "P")
+			If (A_TickCount >= vars.omnikey.start + 100)
+				Return "waystoneinfo"
 
 	If (!vars.poe_version && !LLK_PatternMatch(item.name "`n" item.itembase, "", ["Doryani", "Maple"]) && LLK_PatternMatch(item.name "`n" item.itembase, "", ["Map", "Chart", "Invitation", "Blueprint:", "Contract:", "Expedition Logbook"])
 	|| vars.poe_version && LLK_PatternMatch(item.name "`n" item.itembase, "", [Lang_Trans("items_waystone")]))

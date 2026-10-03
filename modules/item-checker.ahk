@@ -287,6 +287,13 @@ Iteminfo(refresh := 0) ; refresh: 1 to refresh it normally, 2 for clipboard pars
 	If (refresh = 2)
 		Return
 
+	If Iteminfo_IsWaystone(item)
+	{
+		item.waystone := 1, item.waystone_rolls := Iteminfo_WaystoneRows(clip)
+		Iteminfo_WaystoneGUI()
+		Return
+	}
+
 	If !vars.poe_version && !db.item_bases.HasKey(item.class) || (item.itembase = "Timeless Jewel") || vars.poe_version && !vars.omnikey.poedb[item.class]
 	{
 		LLK_ToolTip(Lang_Trans("ms_item-info") ":`n" Lang_Trans("iteminfo_unsupported"), 2,,,, "red"), LLK_Overlay(vars.hwnd.iteminfo.main, "destroy")
@@ -306,6 +313,144 @@ Iteminfo(refresh := 0) ; refresh: 1 to refresh it normally, 2 for clipboard pars
 			Iteminfo_Dust() ;estimate Kingsmarch dust efficiency from the parsed item and affixes
 	}
 	Iteminfo_GUI() ;use parsed data to build the tooltip
+}
+
+Iteminfo_IsWaystone(item)
+{
+	global vars
+	Return vars.poe_version && (item.itembase = Lang_Trans("items_waystone"))
+}
+
+Iteminfo_WaystoneRows(clip)
+{
+	local
+	rows := [], after_level := in_mods := 0
+	number := "[+-]?\d+(?:\.\d+)?", pattern := "(" number ")\((" number ")-(" number ")\)"
+	Loop, Parse, clip, `n, `r
+	{
+		line := Trim(A_LoopField)
+		If !after_level
+		{
+			after_level := InStr(line, Lang_Trans("items_ilevel"))
+			Continue
+		}
+		If InStr(line, "{")
+		{
+			in_mods := 1
+			Continue
+		}
+		If in_mods && InStr(line, "--------")
+			Break
+		If !in_mods
+			Continue
+		ranges := [], pos := 1, valid := 1
+		While (pos := RegExMatch(line, pattern, roll, pos))
+		{
+			current := roll1 + 0, first := roll2 + 0, last := roll3 + 0
+			If (current < Min(first, last)) || (current > Max(first, last))
+				valid := 0
+			ranges.Push({"current": current, "first": first, "last": last})
+			pos += StrLen(roll)
+		}
+		; Fixed/unscalable lines and missing ranges cannot be given an invented roll rating.
+		If valid && ranges.Count()
+			rows.Push({"text": line, "ranges": ranges})
+	}
+	Return rows
+}
+
+Iteminfo_WaystoneRoll(row)
+{
+	local
+	span := rolled := 0, perfect := 1
+	For index, roll in row.ranges
+	{
+		span += Abs(roll.last - roll.first), rolled += Abs(roll.current - roll.first)
+		perfect := perfect && (roll.current = roll.last)
+	}
+	percent := span ? rolled/span * 100 : 100
+	Return {"percent": percent, "color": perfect ? "FFFFFF" : (percent >= 67 ? "00FF00" : "FFFF00")}
+}
+
+Iteminfo_WaystoneGUI()
+{
+	local
+	global vars, settings
+	static toggle := 0
+	rows := vars.iteminfo.item.waystone_rolls, UI := vars.iteminfo.UI
+	If !rows.Count()
+	{
+		Iteminfo_Close(), LLK_ToolTip(Lang_Trans("ms_item-info") ": " Lang_Trans("global_nothing"), 1.5,,,, "yellow")
+		Return
+	}
+	toggle := !toggle, GUI_name := "iteminfo_waystone" toggle, hwnd_old := vars.hwnd.iteminfo.main
+	Gui, %GUI_name%: New, -DPIScale -Caption +LastFound +AlwaysOnTop +ToolWindow +Border HWNDhwnd +E0x02000000 +E0x00080000
+	vars.hwnd.iteminfo := {"main": hwnd, "inverted_mods": {}}
+	Gui, %GUI_name%: Margin, 0, 0
+	Gui, %GUI_name%: Color, Black
+	Gui, %GUI_name%: Font, % "cWhite s" settings.iteminfo.fSize, % vars.system.font
+	width := UI.wSegment * UI.segments, bar_height := Max(3, UI.hSegment//5)
+	For index, row in rows
+	{
+		roll := Iteminfo_WaystoneRoll(row)
+		Gui, %GUI_name%: Add, Text, % "x0 y+0 Center Border w" width " c" roll.color, % row.text
+		Gui, %GUI_name%: Add, Progress, % "x0 y+0 w" width " h" bar_height " Disabled -Theme Background404040 c" roll.color, % roll.percent
+	}
+	Gui, %GUI_name%: Show, NA AutoSize x10000 y10000
+	WinGetPos,,, w, h, % "ahk_id " hwnd
+	If (UI.xPos != "")
+		x := UI.xPos, y := UI.yPos
+	Else x := vars.general.xMouse - w - vars.client.w/200, y := vars.general.yMouse - h - vars.client.h/100
+	Gui_CheckBounds(x, y, w, h)
+	Gui, %GUI_name%: Show, % "NA x" x " y" y
+	LLK_Overlay(hwnd, "show",, GUI_name), LLK_Overlay(hwnd_old, "destroy")
+	Iteminfo_WaystonePosition()
+}
+
+Iteminfo_WaystoneLayout(iw, ih, mw, mh, cx, cy, bounds, gap)
+{
+	local
+	candidates := [], right := bounds.x + bounds.w, bottom := bounds.y + bounds.h
+	If (iw + mw + gap <= bounds.w) && (Max(ih, mh) <= bounds.h)
+	{
+		width := iw + mw + gap, iy := Max(bounds.y, Min(cy - gap - ih, bottom - ih)), my := Max(bounds.y, Min(iy + ih - mh, bottom - mh))
+		x := Max(bounds.x, Min(cx - gap - width, right - width))
+		candidates.Push({"ix": x + mw + gap, "iy": iy, "mx": x, "my": my})
+		x := Max(bounds.x, Min(cx + gap, right - width))
+		candidates.Push({"ix": x, "iy": iy, "mx": x + iw + gap, "my": my})
+	}
+	If (ih + mh + gap <= bounds.h) && (Max(iw, mw) <= bounds.w)
+	{
+		height := ih + mh + gap, ix := Max(bounds.x, Min(cx - gap - iw, right - iw)), mx := Max(bounds.x, Min(ix + iw - mw, right - mw))
+		y := Max(bounds.y, Min(cy - gap - height, bottom - height))
+		candidates.Push({"ix": ix, "iy": y + mh + gap, "mx": mx, "my": y})
+		y := Max(bounds.y, Min(cy + gap, bottom - height))
+		candidates.Push({"ix": ix, "iy": y, "mx": mx, "my": y + ih + gap})
+	}
+	For index, candidate in candidates
+	{
+		idistance := (candidate.ix + iw/2 - cx)**2 + (candidate.iy + ih/2 - cy)**2
+		mdistance := (candidate.mx + mw/2 - cx)**2 + (candidate.my + mh/2 - cy)**2
+		If (mdistance > idistance) && (!IsObject(best) || idistance < distance)
+			best := candidate, distance := idistance
+	}
+	Return IsObject(best) ? best : candidates.1
+}
+
+Iteminfo_WaystonePosition()
+{
+	local
+	global vars, settings
+	If !vars.poe_version || !settings.features.iteminfo || !settings.features.mapinfo || !vars.iteminfo.item.waystone
+	|| (vars.iteminfo.clipboard != vars.omnikey.clipboard) || !WinExist("ahk_id " vars.hwnd.iteminfo.main) || !WinExist("ahk_id " vars.hwnd.mapinfo.main)
+		Return
+	WinGetPos,,, iw, ih, % "ahk_id " vars.hwnd.iteminfo.main
+	WinGetPos,,, mw, mh, % "ahk_id " vars.hwnd.mapinfo.main
+	position := Iteminfo_WaystoneLayout(iw, ih, mw, mh, vars.general.xMouse, vars.general.yMouse, vars.client, Max(4, vars.client.h//100))
+	If !IsObject(position)
+		Return
+	WinMove, % "ahk_id " vars.hwnd.iteminfo.main,, % position.ix, % position.iy
+	WinMove, % "ahk_id " vars.hwnd.mapinfo.main,, % position.mx, % position.my
 }
 
 Iteminfo_Stats()

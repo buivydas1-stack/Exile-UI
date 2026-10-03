@@ -281,6 +281,8 @@ Mapinfo_GUI(mode := 1)
 	If (w < 10)
 		LLK_ToolTip(Lang_Trans("ms_map-info") ": " Lang_Trans("global_nothing"), 1.5,,,, "red"), LLK_Overlay(mapinfo, "destroy"), vars.mapinfo.active_map := ""
 	LLK_Overlay(hwnd_old, "destroy"), vars.mapinfo.active_map.summary := summary
+	If (mode != 2)
+		Iteminfo_WaystonePosition()
 }
 
 Mapinfo_Lineparse(line, ByRef text, ByRef value)

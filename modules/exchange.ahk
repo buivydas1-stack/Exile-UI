@@ -872,9 +872,9 @@ AsyncTradeReprice(mode := "", tooltip := "")
 			; A locked merchant item still copies its note, but right-click does not open the price field.
 			If vars.poe_version && (mode = "sell")
 			{
-				Sleep, 15
+				Sleep, 3
 				SendInput, {RButton}
-				Sleep, 45
+				Sleep, 9
 				If !AsyncTradePriceDialogReady(array.1)
 				{
 					AsyncTradePriceUnavailable()
@@ -884,14 +884,14 @@ AsyncTradeReprice(mode := "", tooltip := "")
 			}
 			If !price_dialog_open
 			{
-				Sleep, % vars.poe_version ? 15 : 20
+				Sleep, % vars.poe_version ? 3 : 20
 				SendInput, {RButton}
 			}
 			; PoE2 also converts one divine to chaos and one chaos to exalted using the selected league economy.
 			If AsyncTradeCanDirectReprice(vars.poe_version, mode, array.1, array.2)
 			{
 				If !price_dialog_open
-					Sleep, % vars.poe_version ? 45 : 60
+					Sleep, % vars.poe_version ? 9 : 60
 				If !AsyncTradePriceTarget(array.1, array.2, settings.async.minchange, price_new, currency_new, error)
 				{
 					SendInput, {ESC}
@@ -1220,12 +1220,12 @@ AsyncTradeApplyPrice(amount, currency, currency_current, amount_current := "")
 	WinWaitActive, % "ahk_id " vars.hwnd.poe_client,, 2
 	If ErrorLevel
 		Return 0
-	Sleep, % vars.poe_version ? 15 : 20
+	Sleep, % vars.poe_version ? 3 : 20
 	SendInput, ^{a}^{v}
 	If (currency = currency_current)
 	{
 		SendInput, {ENTER}
-		Sleep, % vars.poe_version ? 15 : 20
+		Sleep, % vars.poe_version ? 3 : 20
 		Return 1
 	}
 	Return AsyncTradeSelectCurrency(currency)
@@ -1255,7 +1255,7 @@ AsyncTradeSelectCurrency(currency)
 		Return 0
 	MouseGetPos, xMouse, yMouse
 	Click, % coords.x " " coords.y
-	Sleep, % vars.poe_version ? 20 : 30
+	Sleep, % vars.poe_version ? 4 : 30
 	If vars.poe_version
 	{
 		; The game retains dropdown scrolling; fixed currency rows require the top.
@@ -1266,7 +1266,7 @@ AsyncTradeSelectCurrency(currency)
 		Loop, 30
 			Click, WheelUp
 		SetMouseDelay, % mouse_delay
-		Sleep, 20
+		Sleep, 4
 	}
 	Click, % coords.x " " coords.selection_y
 	If vars.poe_version
@@ -1287,7 +1287,7 @@ AsyncTradeSelectCurrency(currency)
 	}
 	Else Sleep, 30
 	Click, % coords.confirm_x " " coords.y
-	Sleep, % vars.poe_version ? 20 : 30
+	Sleep, % vars.poe_version ? 4 : 30
 	MouseMove, %xMouse%, %yMouse%, 0
 	Return 1
 }

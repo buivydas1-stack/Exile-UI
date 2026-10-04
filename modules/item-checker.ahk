@@ -1241,13 +1241,14 @@ Iteminfo_Mods2()
 	clip := vars.iteminfo.clipboard, item := vars.iteminfo.item
 	clip2 := SubStr(clip, InStr(clip, Lang_Trans("items_ilevel"))), item.ilvl := SubStr(clip2, 1, InStr(clip2, "`r`n") - 1), item.ilvl := SubStr(item.ilvl, InStr(item.ilvl, ":") + 2)
 	clip2 := SubStr(clip2, InStr(clip2, "--`r`n") + 4), clip2 := Trim(LLK_StringCase(clip2), " `r`n")
-	clip2 := StrReplace(clip2, "`r`n", "|")
+	clip2 := StrReplace(clip2, "`r`n", "|"), affixes_started := 0
 
 	Loop, Parse, clip2, |, % " "
 	{
 		If (A_Index = 1)
 			clip2 := ""
-		If clip2 && InStr(A_LoopField, "---")
+		; Enhancements precede their own separator; stop only after the explicit affix block.
+		If affixes_started && InStr(A_LoopField, "---")
 			Break
 		If (!InStr(A_LoopField, "{") || InStr(A_LoopField, Lang_Trans("items_implicit")) || InStr(A_LoopField, Lang_Trans("items_implicit_corrupt"))) || LLK_PatternMatch(A_LoopField, "", ["rune)", "implicit)", "---", "enchant)"])
 			Continue
@@ -1258,6 +1259,7 @@ Iteminfo_Mods2()
 			If (SubStr(A_LoopField, 1, 1) != "(")
 				affix_group .= (!affix_group ? "" : "`n") A_LoopField
 		}
+		affixes_started := affixes_started || InStr(affix_group, Lang_Trans("items_prefix")) || InStr(affix_group, Lang_Trans("items_suffix")) || InStr(affix_group, Lang_Trans("items_uniquemod"))
 		clip2 .= (!clip2 ? "" : "|") affix_group
 	}
 

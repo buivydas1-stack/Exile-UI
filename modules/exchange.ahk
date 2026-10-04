@@ -1109,6 +1109,12 @@ AsyncTradePriceTarget(amount, currency, minchange, ByRef target_amount, ByRef ta
 	global vars
 
 	target_amount := target_currency := error := "", amount += 0
+	; Fixed PoE2 one-chaos price; revise this value manually when pricing policy changes.
+	If vars.poe_version && (currency = "chaos") && (amount = 1)
+	{
+		target_amount := 30, target_currency := "exalted"
+		Return 1
+	}
 	If vars.poe_version && (currency = "exalted") && (amount > 1) && (amount <= 10)
 	{
 		target_amount := (amount <= 5) ? 1 : 5, target_currency := currency
@@ -1250,6 +1256,18 @@ AsyncTradeSelectCurrency(currency)
 	MouseGetPos, xMouse, yMouse
 	Click, % coords.x " " coords.y
 	Sleep, % vars.poe_version ? 20 : 30
+	If vars.poe_version
+	{
+		; The game retains dropdown scrolling; fixed currency rows require the top.
+		; Mouse-only scrolling avoids SendInput's keyboard-state handling.
+		MouseMove, % coords.x, % coords.selection_y, 0
+		mouse_delay := A_MouseDelay
+		SetMouseDelay, -1
+		Loop, 30
+			Click, WheelUp
+		SetMouseDelay, % mouse_delay
+		Sleep, 20
+	}
 	Click, % coords.x " " coords.selection_y
 	If vars.poe_version
 	{

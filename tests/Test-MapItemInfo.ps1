@@ -31,10 +31,29 @@ for _, sample in [["67(0-100)", "00FF00"], ["66.99(0-100)", "FFFF00"], ["100(0-1
     Check(Iteminfo_MapRoll(row).color = sample.2, "boundary " sample.1)
 }
 FileRead, clip, % A_ScriptDir "\waystone-rewards.txt"
-rows := Iteminfo_WaystoneRewards(clip), expected := [15,24,41,100]
-Check(rows.Count() = 4, "waystone has exactly four reward rows")
+rows := Iteminfo_WaystoneRewards(clip), expected := [15,24,41,13,100]
+Check(rows.Count() = 5, "waystone has all five reward rows")
 for j, row in rows
     Check(row.ranges.1.current = expected[j] && row.ranges.1.first = 0 && !InStr(row.text,"Monsters have"), "waystone header " j " excludes harmful affixes")
+Check(rows.4.text = "Monster Effectiveness: +13(0-86)%", "effectiveness uses the copied header and documented ceiling")
+Check(Iteminfo_MapRoll(rows.4).color = "FFFF00", "partial effectiveness receives the ordinary reward rating")
+for _, sample in [[57, "FFFF00"], [58, "00FF00"], [86, "FFFFFF"], [87, "00FF00"]]
+{
+    testclip := StrReplace(clip, "Monster Effectiveness: +13%", "Monster Effectiveness: +" sample.1 "%")
+    row := Iteminfo_WaystoneRewards(testclip).4
+    Check(row.ranges.1.current = sample.1 && Iteminfo_MapRoll(row).color = sample.2, "effectiveness rating boundary " sample.1)
+}
+testclip := StrReplace(clip, "Monster Effectiveness: +13% (augmented)", "") "`nMonsters have 95% more Effectiveness"
+rows := Iteminfo_WaystoneRewards(testclip)
+Check(rows.4.ranges.1.current = 0, "missing effectiveness header stays zero instead of reading explicit affixes")
+testclip := StrReplace(clip, "Item Rarity: +15%", "Item Rarity: +25%")
+testclip := StrReplace(testclip, "Pack Size: +24%", "Pack Size: +7%")
+testclip := StrReplace(testclip, "Monster Rarity: +41%", "Monster Rarity: +43%")
+testclip := StrReplace(testclip, "Monster Effectiveness: +13%", "Monster Effectiveness: +29%")
+testclip := StrReplace(testclip, "Waystone Drop Chance: +100%", "Waystone Drop Chance: +105%")
+rows := Iteminfo_WaystoneRewards(testclip), expected := [25,7,43,29,105]
+for j, row in rows
+    Check(row.ranges.1.current = expected[j], "Secluded Expedition screenshot header " j)
 vars.omnikey.item := {"name": "Cabal Navigation", "itembase": "Waystone", "rarity": "Rare"}
 Check(Omni_Context() = "mapiteminfo", "both enabled: waystone hold shows both views")
 held := 0

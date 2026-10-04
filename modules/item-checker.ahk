@@ -378,6 +378,7 @@ Iteminfo_WaystoneRewards(clip)
 	stats := [{"label": Lang_Trans("items_maprarity"), "max": 145}
 	, {"label": Lang_Trans("items_mappacksize", 2), "max": 80}
 	, {"label": "Monster Rarity:", "max": 103}
+	, {"label": "Monster Effectiveness:", "max": 86}
 	, {"label": Lang_Trans("items_map_waystonechance"), "max": 190}], values := {}, rows := []
 	Loop, Parse, clip, `n, `r
 	{

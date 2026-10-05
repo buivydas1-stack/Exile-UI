@@ -43,13 +43,13 @@ Check(rows.4.text = "Monster Effectiveness: +13(0-86)%", "effectiveness uses the
 Check(rows.5.ranges.1.last = 170, "WDC uses the fixed ordinary ceiling")
 for _, variant in [clip, StrReplace(clip, "`nCorrupted", ""), StrReplace(clip, "Waystone (Tier 15)", "Waystone (Tier 5)"), StrReplace(clip, "of Smothering", "of Cycling"), "Waystone Drop Chance: +100%`nItem Level: 80"]
     Check(Iteminfo_WaystoneRewards(variant).5.ranges.1.last = 170, "tier, corruption, Desecration and missing metadata do not change WDC ceiling")
-for _, sample in [[169,"00FF00"], [170,"FFFFFF"], [190,"00FF00"]]
+for _, sample in [[169,"00FF00"], [170,"FFFFFF"], [190,"FFFFFF"]]
 {
     row := Iteminfo_WaystoneRewards(StrReplace(clip, "Waystone Drop Chance: +100%", "Waystone Drop Chance: +" sample.1 "%")).5
     Check(row.ranges.1.current = sample.1 && row.ranges.1.last = 170 && Iteminfo_MapRoll(row).color = sample.2, "fixed WDC perfect/above-bound rating " sample.1)
 }
 Check(Iteminfo_MapRoll(rows.4).color = "FFFF00", "partial effectiveness receives the ordinary reward rating")
-for _, sample in [[57, "FFFF00"], [58, "00FF00"], [86, "FFFFFF"], [87, "00FF00"]]
+for _, sample in [[57, "FFFF00"], [58, "00FF00"], [86, "FFFFFF"], [87, "FFFFFF"]]
 {
     testclip := StrReplace(clip, "Monster Effectiveness: +13%", "Monster Effectiveness: +" sample.1 "%")
     row := Iteminfo_WaystoneRewards(testclip).4
@@ -58,6 +58,32 @@ for _, sample in [[57, "FFFF00"], [58, "00FF00"], [86, "FFFFFF"], [87, "00FF00"]
 testclip := StrReplace(clip, "Monster Effectiveness: +13% (augmented)", "") "`nMonsters have 95% more Effectiveness"
 rows := Iteminfo_WaystoneRewards(testclip)
 Check(rows.4.ranges.1.current = 0, "missing effectiveness header stays zero instead of reading explicit affixes")
+for _, sample in [["Item Rarity:",112,1], ["Pack Size:",65,2], ["Monster Rarity:",103,3], ["Monster Effectiveness:",86,4], ["Waystone Drop Chance:",170,5]]
+    for _, delta in [-1,0,10]
+    {
+        value := sample.2 + delta
+        row := Iteminfo_WaystoneRewards("Waystone (Tier 15)`n" sample.1 " +" value "%`nItem Level: 80")[sample.3]
+        Check(row.ranges.1.current = value && row.ranges.1.last = sample.2 && Iteminfo_MapRoll(row).color = (delta < 0 ? "00FF00" : "FFFFFF"), "all Waystone references meet/exceed " sample.1 " " delta)
+    }
+t16rows := Iteminfo_WaystoneRewards(StrReplace(clip, "Waystone (Tier 15)", "Waystone (Tier 16)"))
+for j, ceiling in [87,51,103,86,130]
+    Check(t16rows[j].ranges.1.last = ceiling, "T16 fixed six-mod reference " j)
+for _, sample in [["Item Rarity:",87,1], ["Pack Size:",51,2], ["Monster Rarity:",103,3], ["Monster Effectiveness:",86,4], ["Waystone Drop Chance:",130,5]]
+    for _, delta in [0,10]
+    {
+        value := sample.2 + delta
+        row := Iteminfo_WaystoneRewards("Waystone (Tier 16)`n" sample.1 " +" value "%`nItem Level: 80")[sample.3]
+        Check(row.ranges.1.current = value && Iteminfo_MapRoll(row).color = "FFFFFF", "T16 at/above reference is white " sample.1 " " delta)
+    }
+for _, tier in [1,5,10,15]
+{
+    ordinary := Iteminfo_WaystoneRewards(StrReplace(clip, "Waystone (Tier 15)", "Waystone (Tier " tier ")"))
+    for j, ceiling in [112,65,103,86,170]
+        Check(ordinary[j].ranges.1.last = ceiling, "non-T16 fixed eight-mod reference " tier " row " j)
+}
+tablet := {"ranges": [{"current":101, "first":0, "last":100}]}
+Check(Iteminfo_MapRoll(tablet).color = "00FF00", "tablet values above bounds retain exact-perfect rule")
+Check(!Iteminfo_WaystoneTier("Waystone Drop Chance: +16%`nItem Level: 80`nWaystone (Tier 16)"), "tier cannot be inferred from reward numbers or explicit text")
 testclip := StrReplace(clip, "Item Rarity: +15%", "Item Rarity: +25%")
 testclip := StrReplace(testclip, "Pack Size: +24%", "Pack Size: +7%")
 testclip := StrReplace(testclip, "Monster Rarity: +41%", "Monster Rarity: +43%")
@@ -113,7 +139,7 @@ Stash(check)
 {
 }
 '@
-foreach ($name in @('Iteminfo_MapItemKind','Iteminfo_TabletRows','Iteminfo_WaystoneRewards','Iteminfo_MapRoll','Iteminfo_MapRollLayout')) {
+foreach ($name in @('Iteminfo_MapItemKind','Iteminfo_TabletRows','Iteminfo_WaystoneRewards','Iteminfo_WaystoneTier','Iteminfo_MapRoll','Iteminfo_MapRollLayout')) {
     $harness += "`r`n" + (Read-Function 'modules/item-checker.ahk' $name)
 }
 foreach ($name in @('Blank','LLK_PatternMatch','LLK_HasVal','LLK_HasKey')) {

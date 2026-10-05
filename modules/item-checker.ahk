@@ -375,11 +375,12 @@ Iteminfo_WaystoneRewards(clip)
 {
 	local
 	; Independent reward ceilings and their provenance are documented in docs/map-item-rolls.md.
-	stats := [{"label": Lang_Trans("items_maprarity"), "max": 145}
-	, {"label": Lang_Trans("items_mappacksize", 2), "max": 80}
+	t16 := Iteminfo_WaystoneTier(clip) = 16
+	stats := [{"label": Lang_Trans("items_maprarity"), "max": t16 ? 87 : 112}
+	, {"label": Lang_Trans("items_mappacksize", 2), "max": t16 ? 51 : 65}
 	, {"label": "Monster Rarity:", "max": 103}
 	, {"label": "Monster Effectiveness:", "max": 86}
-	, {"label": Lang_Trans("items_map_waystonechance"), "max": 170}], values := {}, rows := []
+	, {"label": Lang_Trans("items_map_waystonechance"), "max": t16 ? 130 : 170}], values := {}, rows := []
 	Loop, Parse, clip, `n, `r
 	{
 		line := Trim(A_LoopField)
@@ -392,9 +393,22 @@ Iteminfo_WaystoneRewards(clip)
 	For index, stat in stats
 	{
 		value := values.HasKey(index) ? values[index] : 0
-		rows.Push({"text": stat.label " +" value "(0-" stat.max ")%", "ranges": [{"current": value, "first": 0, "last": stat.max}]})
+		rows.Push({"text": stat.label " +" value "(0-" stat.max ")%", "reward_reference": 1, "ranges": [{"current": value, "first": 0, "last": stat.max}]})
 	}
 	Return rows
+}
+
+Iteminfo_WaystoneTier(clip)
+{
+	local
+	Loop, Parse, clip, `n, `r
+	{
+		line := Trim(A_LoopField)
+		If InStr(line, Lang_Trans("items_ilevel")) || InStr(line, "{")
+			Break
+		If (SubStr(line, 1, StrLen(Lang_Trans("items_waystone"))) = Lang_Trans("items_waystone")) && RegExMatch(line, "\([^\d]*(\d+)\)", tier)
+			Return tier1 + 0
+	}
 }
 
 Iteminfo_MapRoll(row)
@@ -404,7 +418,7 @@ Iteminfo_MapRoll(row)
 	For index, roll in row.ranges
 	{
 		span += Abs(roll.last - roll.first), rolled += Abs(roll.current - roll.first)
-		perfect := perfect && (roll.current = roll.last)
+		perfect := perfect && (row.reward_reference ? roll.current >= roll.last : roll.current = roll.last)
 	}
 	percent := span ? rolled/span * 100 : 100
 	Return {"percent": Max(0, Min(100, percent)), "color": perfect ? "FFFFFF" : (percent >= 67 ? "00FF00" : "FFFF00")}

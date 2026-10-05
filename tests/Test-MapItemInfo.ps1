@@ -12,8 +12,6 @@ function Read-Function([string]$File, [string]$Name) {
 }
 New-Item -ItemType Directory -Force $OutputDirectory | Out-Null
 foreach ($file in @('tablet-rolls.txt','waystone-rewards.txt')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot ('fixtures/' + $file)) -Destination $OutputDirectory }
-New-Item -ItemType Directory -Force (Join-Path $OutputDirectory 'data/global') | Out-Null
-Copy-Item -LiteralPath (Join-Path $root 'data/global/waystone wdc 2.json') -Destination (Join-Path $OutputDirectory 'data/global')
 $harness = @'
 #NoEnv
 #NoTrayIcon
@@ -42,34 +40,14 @@ Check(rows.Count() = 5, "waystone has all five reward rows")
 for j, row in rows
     Check(row.ranges.1.current = expected[j] && row.ranges.1.first = 0 && !InStr(row.text,"Monsters have"), "waystone header " j " excludes harmful affixes")
 Check(rows.4.text = "Monster Effectiveness: +13(0-86)%", "effectiveness uses the copied header and documented ceiling")
-Check(rows.5.ranges.1.last = 150, "seven ordinary mods use the seven-slot ceiling")
-FileRead, pool_json, % A_ScriptDir "\data\global\waystone wdc 2.json"
-pool := Json.Load(pool_json).bands.high
-for _, sample in [[6,3,0,130], [7,8,0,150], [8,8,0,170], [6,3,1,150], [7,8,1,170], [8,8,1,190]]
-    Check(Iteminfo_WaystoneWdcMax(pool, sample.1, sample.2, sample.2, sample.3) = sample.4, "slot/type/special maximum " sample.1 "/" sample.2 "/" sample.3)
-conflict := {"same": [{"affix":"prefix", "value":40, "desecrated":1}, {"affix":"suffix", "value":35, "desecrated":0}], "other": [{"affix":"suffix", "value":25, "desecrated":1}]}
-Check(Iteminfo_WaystoneWdcMax(conflict, 8, 8, 8, 1) = 60, "conflicting group alternatives cannot stack")
-special_pool := {"one": [{"affix":"prefix", "value":40, "desecrated":1}], "two": [{"affix":"suffix", "value":35, "desecrated":1}]}
-Check(Iteminfo_WaystoneWdcMax(special_pool, 8, 8, 8, 1) = 40, "only one special modifier contributes")
-six := StrReplace(clip, "{ Prefix Modifier ""Tough"" (Tier: 1) }", "")
-six := StrReplace(six, "`nCorrupted", "")
-Check(Iteminfo_WaystoneRewards(six).5.ranges.1.last = 130, "uncorrupted six-mod clipboard")
-eight := clip "`n{ Suffix Modifier ""of Erosion"" (Tier: 1) }"
-Check(Iteminfo_WaystoneRewards(eight).5.ranges.1.last = 170, "corrupted eight ordinary mods")
+Check(rows.5.ranges.1.last = 170, "WDC uses the fixed ordinary ceiling")
+for _, variant in [clip, StrReplace(clip, "`nCorrupted", ""), StrReplace(clip, "Waystone (Tier 15)", "Waystone (Tier 5)"), StrReplace(clip, "of Smothering", "of Cycling"), "Waystone Drop Chance: +100%`nItem Level: 80"]
+    Check(Iteminfo_WaystoneRewards(variant).5.ranges.1.last = 170, "tier, corruption, Desecration and missing metadata do not change WDC ceiling")
 for _, sample in [[169,"00FF00"], [170,"FFFFFF"], [190,"00FF00"]]
 {
-    row := Iteminfo_WaystoneRewards(StrReplace(eight, "Waystone Drop Chance: +100%", "Waystone Drop Chance: +" sample.1 "%")).5
-    Check(row.ranges.1.current = sample.1 && Iteminfo_MapRoll(row).color = sample.2, "ordinary WDC perfect/above-bound rating " sample.1)
+    row := Iteminfo_WaystoneRewards(StrReplace(clip, "Waystone Drop Chance: +100%", "Waystone Drop Chance: +" sample.1 "%")).5
+    Check(row.ranges.1.current = sample.1 && row.ranges.1.last = 170 && Iteminfo_MapRoll(row).color = sample.2, "fixed WDC perfect/above-bound rating " sample.1)
 }
-desecrated_clip := StrReplace(eight, "of Erosion", "of Cycling")
-Check(Iteminfo_WaystoneRewards(desecrated_clip).5.ranges.1.last = 190, "special affix name enables Desecrated ceiling")
-Check(Iteminfo_WaystoneRewards(eight "`nPlayers deal no damage (desecrated)").5.ranges.1.last = 190, "copied special marker enables Desecrated ceiling")
-Check(Iteminfo_WaystoneRewards("Waystone (Tier 15)`nWaystone Drop Chance: +100%`nItem Level: 80").5.ranges.1.last = 190, "missing advanced headers retains conservative bound")
-low_pool := Json.Load(pool_json).bands.low
-Check(!low_pool.HasKey("MapMonsterFast"), "non-prefix low-tier Fleeting records are excluded")
-Check(!pool.HasKey("MapMonsterMultipleProjectiles"), "zero-weight extra-projectile mods are excluded")
-Check(Iteminfo_WaystoneWdcMax(low_pool, 6, 3, 3, 0) = 120, "low-tier ceiling uses its eligible affix pool")
-Check(Iteminfo_WaystoneRewards(StrReplace(six,"Waystone (Tier 15)","Waystone (Tier 5)")).5.ranges.1.last = 120, "clipboard tier selects the low-tier pool")
 Check(Iteminfo_MapRoll(rows.4).color = "FFFF00", "partial effectiveness receives the ordinary reward rating")
 for _, sample in [[57, "FFFF00"], [58, "00FF00"], [86, "FFFFFF"], [87, "00FF00"]]
 {
@@ -135,8 +113,7 @@ Stash(check)
 {
 }
 '@
-$harness += "`r`n" + [IO.File]::ReadAllText((Join-Path $root 'data/JSON.ahk'))
-foreach ($name in @('Iteminfo_MapItemKind','Iteminfo_TabletRows','Iteminfo_WaystoneRewards','Iteminfo_WaystoneWdcCeiling','Iteminfo_WaystoneWdcMax','Iteminfo_MapRoll','Iteminfo_MapRollLayout')) {
+foreach ($name in @('Iteminfo_MapItemKind','Iteminfo_TabletRows','Iteminfo_WaystoneRewards','Iteminfo_MapRoll','Iteminfo_MapRollLayout')) {
     $harness += "`r`n" + (Read-Function 'modules/item-checker.ahk' $name)
 }
 foreach ($name in @('Blank','LLK_PatternMatch','LLK_HasVal','LLK_HasKey')) {

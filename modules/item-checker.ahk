@@ -379,7 +379,7 @@ Iteminfo_WaystoneRewards(clip)
 	, {"label": Lang_Trans("items_mappacksize", 2), "max": 80}
 	, {"label": "Monster Rarity:", "max": 103}
 	, {"label": "Monster Effectiveness:", "max": 86}
-	, {"label": Lang_Trans("items_map_waystonechance"), "max": Iteminfo_WaystoneWdcCeiling(clip)}], values := {}, rows := []
+	, {"label": Lang_Trans("items_map_waystonechance"), "max": 170}], values := {}, rows := []
 	Loop, Parse, clip, `n, `r
 	{
 		line := Trim(A_LoopField)
@@ -395,79 +395,6 @@ Iteminfo_WaystoneRewards(clip)
 		rows.Push({"text": stat.label " +" value "(0-" stat.max ")%", "ranges": [{"current": value, "first": 0, "last": stat.max}]})
 	}
 	Return rows
-}
-
-Iteminfo_WaystoneWdcCeiling(clip)
-{
-	local
-	global Json
-	static data, cache := {}
-	If !IsObject(data)
-	{
-		FileRead, source, *P65001 data\global\waystone wdc 2.json
-		data := Json.Load(source)
-	}
-	count := desecrated := corrupted := after_level := 0, band := "high"
-	Loop, Parse, clip, `n, `r
-	{
-		line := Trim(A_LoopField)
-		If !after_level && (SubStr(line, 1, StrLen(Lang_Trans("items_waystone"))) = Lang_Trans("items_waystone")) && RegExMatch(line, "\([^\d]*(\d+)\)", tier)
-			band := tier1 <= 5 ? "low" : (tier1 <= 10 ? "medium" : (tier1 <= 15 ? "high" : "highest"))
-		If (line = Lang_Trans("items_corrupted"))
-			corrupted := 1
-		If InStr(line, Lang_Trans("items_ilevel"))
-			after_level := 1
-		If after_level && InStr(line, "{") && (InStr(line, Lang_Trans("items_prefix")) || InStr(line, Lang_Trans("items_suffix")))
-		{
-			count++
-			If InStr(line, "desecrated")
-				desecrated := 1
-			; Names identify revealed special mods even when their header lacks the marker.
-			For group, candidates in data.bands[band]
-				For index, candidate in candidates
-					If candidate.desecrated && InStr(line, """" candidate.name """")
-						desecrated := 1
-		}
-		If after_level && InStr(line, "(desecrated)")
-			desecrated := 1
-	}
-	; Without advanced modifier headers the affix count/special status is unknown.
-	; Retain a conservative pool bound rather than declaring an ordinary stone perfect.
-	If !count
-		count := 8, corrupted := desecrated := 1
-	count := Min(count, 8), limit := corrupted ? 8 : 3
-	key := band ":" count ":" limit ":" desecrated
-	If !cache.HasKey(key)
-		cache[key] := Iteminfo_WaystoneWdcMax(data.bands[band], count, limit, limit, desecrated)
-	Return cache[key]
-}
-
-Iteminfo_WaystoneWdcMax(pool, slots, prefix_limit, suffix_limit, desecrated)
-{
-	local
-	; Each group is visited once. States encode prefix/suffix/special counts;
-	; taking alternatives from one group cannot combine incompatible modifiers.
-	states := {0: 0}, best := 0
-	For group, candidates in pool
-	{
-		next := states.Clone()
-		For key, value in states
-		{
-			prefixes := Floor(key / 100), suffixes := Mod(Floor(key / 10), 10), special := Mod(key, 10)
-			For index, candidate in candidates
-			{
-				p := prefixes + (candidate.affix = "prefix"), s := suffixes + (candidate.affix = "suffix"), d := special + candidate.desecrated
-				If (p > prefix_limit) || (s > suffix_limit) || (p + s > slots) || (d > desecrated)
-					Continue
-				k := p * 100 + s * 10 + d, total := value + candidate.value
-				If !next.HasKey(k) || (total > next[k])
-					next[k] := total
-				best := Max(best, total)
-			}
-		}
-		states := next
-	}
-	Return best
 }
 
 Iteminfo_MapRoll(row)

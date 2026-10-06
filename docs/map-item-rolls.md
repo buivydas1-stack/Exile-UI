@@ -5,8 +5,9 @@ Checked 2026-10-05 against public patch **0.5.5d**. Pinned RePoE export:
 separate version systems. The relevant released-patch/source checks from the
 WDC audit were reused; the complete ordinary reward pool was recalculated.
 
-Tablets show explicit modifier lines with copied numeric ranges. Implicits,
-remaining uses and fixed lines are excluded. The last copied endpoint is
+Tablets show explicit modifier lines, including fixed/unscalable affixes.
+Affixes without copied ranges or with zero-width ranges use a full grey bar
+without a quality rating. Implicits and remaining uses are excluded. The last copied endpoint is
 perfect, including reversed and negative ranges. Their exact-perfect rule is
 unchanged; green starts at 67% of the span and yellow covers lower rolls.
 

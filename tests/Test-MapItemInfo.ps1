@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$OutputDirectory = (Join-Path $env:TEMP 'exile-ui-map-item-tests'),
     [string]$SourceDirectory = (Split-Path $PSScriptRoot)
 )
@@ -21,11 +21,11 @@ SetBatchLines, -1
 global vars := {"poe_version": " 2", "hwnd": {}, "omnikey": {"hotkey": "capslock", "start": A_TickCount - 200}}
 global settings := {"features": {"iteminfo": 1, "mapinfo": 1}}, failures := 0, checks := 0, held := 1
 FileRead, fixtures, % A_ScriptDir "\tablet-rolls.txt"
-colors := [["FFFF00", "FFFF00", "00FF00", "00FF00"], ["FFFF00", "FFFF00", "FFFF00"]]
+colors := [["FFFF00", "FFFF00", "00FF00", "00FF00"], ["FFFF00", "FFFF00", "606060", "FFFF00"]]
 for index, clip in StrSplit(fixtures, "===")
 {
     rows := Iteminfo_TabletRows(clip)
-    Check(rows.Count() = colors[index].Count(), "tablet " index " skips implicits and fixed affixes")
+    Check(rows.Count() = colors[index].Count(), "tablet " index " keeps fixed affixes and skips implicits")
     for j, row in rows
         Check(Iteminfo_MapRoll(row).color = colors[index][j], "tablet " index " row " j " quality")
 }
@@ -34,6 +34,14 @@ for _, sample in [["67(0-100)", "00FF00"], ["66.99(0-100)", "FFFF00"], ["100(0-1
     row := Iteminfo_TabletRows("Item Level: 82`n--------`n{ Prefix Modifier }`n" sample.1).1
     Check(Iteminfo_MapRoll(row).color = sample.2, "boundary " sample.1)
 }
+for _, line in ["Unique Monsters have 1 additional Rare Modifier", "Map contains an additional Abyss", "1(1-1) additional Rare Modifier"]
+{
+    rows := Iteminfo_TabletRows("Item Level: 80`n--------`n{ Implicit Modifier }`n10 uses remaining`n--------`n{ Suffix Modifier }`n" line "`n`n--------`nUsage text")
+    roll := Iteminfo_MapRoll(rows.1)
+    Check(rows.Count() = 1 && rows.1.text = line, "fixed tablet keeps text and excludes empty/implicit/usage lines: " line)
+    Check(roll.color = "606060" && roll.percent = 100, "fixed tablet has full neutral bar: " line)
+}
+Check(!Iteminfo_TabletRows("Item Level: 80`n{ Suffix Modifier }`n101(70-100)% increased chance").Count(), "invalid copied ranges remain excluded")
 FileRead, clip, % A_ScriptDir "\waystone-rewards.txt"
 rows := Iteminfo_WaystoneRewards(clip), expected := [15,24,41,13,100]
 Check(rows.Count() = 5, "waystone has all five reward rows")

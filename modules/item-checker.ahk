@@ -364,8 +364,8 @@ Iteminfo_TabletRows(clip)
 			ranges.Push({"current": current, "first": first, "last": last})
 			pos += StrLen(roll)
 		}
-		; Fixed/unscalable lines and missing ranges cannot be given an invented roll rating.
-		If valid && ranges.Count()
+		; Keep fixed/unscalable affixes visible; the renderer gives them a neutral bar.
+		If valid && (line != "")
 			rows.Push({"text": line, "ranges": ranges})
 	}
 	Return rows
@@ -420,7 +420,9 @@ Iteminfo_MapRoll(row)
 		span += Abs(roll.last - roll.first), rolled += Abs(roll.current - roll.first)
 		perfect := perfect && (row.reward_reference ? roll.current >= roll.last : roll.current = roll.last)
 	}
-	percent := span ? rolled/span * 100 : 100
+	If !span
+		Return {"percent": 100, "color": "606060"}
+	percent := rolled/span * 100
 	Return {"percent": Max(0, Min(100, percent)), "color": perfect ? "FFFFFF" : (percent >= 67 ? "00FF00" : "FFFF00")}
 }
 
@@ -447,7 +449,7 @@ Iteminfo_MapRollGUI()
 		roll := Iteminfo_MapRoll(row)
 		; Use the equipment row's font, sizing, border and full-height fill. Dark colour
 		; shades keep its normal white lettering readable; a perfect white row uses black.
-		color := roll.color = "FFFFFF" ? "FFFFFF" : (roll.color = "00FF00" ? "007000" : "707000")
+		color := roll.color = "606060" ? "606060" : (roll.color = "FFFFFF" ? "FFFFFF" : (roll.color = "00FF00" ? "007000" : "707000"))
 		text := settings.iteminfo.modrolls ? Iteminfo_ModRangeRemove(row.text) : row.text
 		Gui, %GUI_name%: Add, Text, % "x0 y+0 Hidden Border Center w" width " HWNDmeasure", % text
 		GuiControlGet, text_, Pos, % measure

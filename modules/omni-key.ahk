@@ -500,9 +500,15 @@ Omni_ContextMenu()
 				vars.hwnd.omni_context.chromatics := hwnd
 			}
 		}
-		Loop 12
+		If vars.poe_version
+		{
+			Gui, omni_context: Add, Text, % "Section" (hwnd ? " xs " : " ") "gOmni_ContextMenuPick HWNDhwnd" style, % "corruption"
+			ControlGetPos,,, w13,,, % "ahk_id " hwnd
+			vars.hwnd.omni_context.corruption := hwnd
+		}
+		Loop 13
 			w%A_Index% := !w%A_Index% ? 0 : w%A_Index%
-		width := Max(w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11)
+		width := Max(w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w13)
 	}
 
 	MouseGetPos, mouseX, mouseY
@@ -541,6 +547,8 @@ Omni_ContextMenuPick(cHWND)
 		Loop, Parse, class, `|
 			Run, % "https://www.poe" Trim(vars.poe_version, " ") "wiki.net/wiki/" . A_LoopField
 	}
+	Else If (check = "corruption") && vars.poe_version
+		Run, https://www.poe2wiki.net/wiki/Corrupted#Corruption_outcomes
 	Else If (check = "poelab")
 	{
 		Run, % "https://www.poelab.com/"

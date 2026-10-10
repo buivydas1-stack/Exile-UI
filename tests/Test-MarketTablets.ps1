@@ -40,6 +40,78 @@ Check(!MarketTablets_SameMod("Explicit Map contains an additional Shrine", ["Exp
 Check(MarketTablets_VerifyMod({text:"explicitmap has #% increased chance to contain a summoning cl", x:31, w:539.5}, "explicitmap has #% increased chance to contain a summoning circle"), "clipped final partial glyph verified at value-field edge")
 Check(!MarketTablets_VerifyMod({text:"explicitmap has #% increased chance to contain a summoning cl", x:31, w:300}, "explicitmap has #% increased chance to contain a summoning circle"), "partial glyph fallback requires clipped row edge")
 Check(!MarketTablets_VerifyMod({text:"explicitmap has #% increased chance to contain strongboxes", x:31, w:539.5}, "explicitmap has #% increased chance to contain a summoning circle"), "partial glyph fallback rejects different stat")
+clean := []
+for text, y in {"type filters":243,"item category":288,"item level":329,"item rarity":288,"item quality":329,"equipment filters":373,"requirements":419,"endgame filters":466,"miscellaneous":513,"trade filters":560,"stat filters":610,"add stat filter":652,"add stat group":695}
+    clean.Push({text:text,x:30,y:y,w:150,h:18,words:[]})
+clean.Push(tablet), clean.Push(rarity), clean.Push({text:"p search items",x:39,y:185,w:164,h:24,words:[]})
+Check(MarketTablets_Clean(clean), "clean Tablet form keeps its existing category")
+dirty := clean.Clone(), dirty.Push({text:"123",x:270,y:329,words:[]})
+Check(!MarketTablets_Clean(dirty), "numeric filter needs reset")
+dirty := clean.Clone(), dirty.Push({text:"rare",x:678,y:287,words:[]})
+Check(!MarketTablets_Clean(dirty), "non-default rarity needs reset")
+dirty := clean.Clone(), dirty.Push({text:"NOT",x:31,y:695,words:[]})
+Check(!MarketTablets_Clean(dirty), "existing stat group needs reset")
+dirty := clean.Clone(), dirty.Push({text:"gold",x:39,y:185,words:[]})
+Check(!MarketTablets_Clean(dirty), "item name filter needs reset")
+dirty := clean.Clone(), dirty.Push({text:"explicit map contains an additional shrine",x:31,y:733,words:[]})
+Check(!MarketTablets_Clean(dirty), "existing modifier needs reset")
+dirty := clean.Clone(), dirty.Push({text:"unexpected",x:30,y:430,words:[]})
+Check(!MarketTablets_Clean(dirty), "unfamiliar form needs reset")
+Check(!MarketTablets_Clean([]), "failed OCR cannot skip reset checks")
+bitmap := Gdip_CreateBitmap(870,1140), graphics := Gdip_GraphicsFromImage(bitmap)
+emptyValues := MarketTablets_Needle("values"), Gdip_DrawImage(graphics,emptyValues,250,318,597,37)
+needle := MarketTablets_Needle("off")
+for _, text in ["equipment filters","requirements","endgame filters","miscellaneous","trade filters"]
+{
+    line := MarketTablets_Find(clean,text)
+    Gdip_DrawImage(graphics,needle,818,line.y+line.h/2-11.5,20,23)
+}
+Check(MarketTablets_SectionsOff(clean,bitmap), "inactive collapsed sections preserve clean form")
+pen := Gdip_CreatePen(0xFFFFFFFF,4), line := MarketTablets_Find(clean,"trade filters")
+Gdip_DrawLine(graphics,pen,823,line.y+5,832,line.y+14)
+Check(!MarketTablets_SectionsOff(clean,bitmap), "active collapsed section needs reset")
+Gdip_DeletePen(pen), Gdip_DeleteGraphics(graphics), Gdip_DisposeImage(bitmap)
+bitmap := Gdip_CreateBitmap(870,1140), graphics := Gdip_GraphicsFromImage(bitmap)
+Gdip_DrawImage(graphics,emptyValues,250,318,597,37)
+for _, text in ["equipment filters","requirements","endgame filters","miscellaneous","trade filters"]
+{
+    line := MarketTablets_Find(clean,text)
+    Gdip_DrawImage(graphics,needle,818,line.y+line.h/2-11.5,20,23)
+}
+pen := Gdip_CreatePen(0xFFFFFFFF,4), Gdip_DrawLine(graphics,pen,280,325,280,342)
+Check(!MarketTablets_SectionsOff(clean,bitmap), "unread numeric value cannot pass clean-form image check")
+Gdip_DeletePen(pen), Gdip_DeleteGraphics(graphics), Gdip_DisposeImage(bitmap)
+bitmap := Gdip_CreateBitmap(870,1140), graphics := Gdip_GraphicsFromImage(bitmap), needle := MarketTablets_Needle("add")
+Gdip_DrawImage(graphics,needle,350,649,137,21), Gdip_DrawImage(graphics,needle,350,899,137,21)
+Check(Abs(MarketTablets_AddButton(bitmap).y-899)<3, "image lookup chooses NOT group's lowest add control")
+Gdip_DeleteGraphics(graphics), Gdip_DisposeImage(bitmap)
+phrases := ["expl map % azmer spirits","a sp contains # map","#% gold map ex","expl map #% shr"]
+batch := [{text:"NOT",x:31,y:695},{text:"+ Add Stat Filter",x:351,y:900}]
+texts := ["Explicit Map has #% increased chance to contain Azmeri Spirits","Explicit Map contains # additional Azmeri Spirit","Explicit #% increased Gold found in Map (Gold Piles)","Explicit Map has #% increased chance to contain Shrines"]
+for index, text in texts
+    batch.Push({text:text,x:31,y:730+index*41,w:530,h:18})
+batch.Push({text:"+ Add Stat Group",x:607,y:939,w:150,h:18})
+Check(MarketTablets_VerifyBatch(batch,phrases,4).Count()=4, "first four verified together in screen order")
+wrong := batch.Clone(), wrong.RemoveAt(6)
+Check(!MarketTablets_VerifyBatch(wrong,phrases,4), "missing batch row stops the run")
+wrong := batch.Clone(), wrong[6] := {text:texts.1,x:31,y:894,w:530,h:18}
+Check(!MarketTablets_VerifyBatch(wrong,phrases,4), "wrong or duplicate batch modifier stops the run")
+Check(!MarketTablets_PhraseMatches(texts.3,phrases.4), "batch verification rejects a different search result")
+choice := [{text:"NOT",x:610,y:720,w:60,h:18}], emptyNot := [{text:"NOT",x:31,y:695,w:60,h:18},{text:"+ Add Stat Filter",x:351,y:738,w:137,h:18},{text:"+ Add Stat Group",x:607,y:781,w:150,h:18}]
+testScans := [clean,choice,emptyNot,batch], testScanCount := testClearCount := testTabletPastes := testButtonCount := testScrollCount := 0
+Check(Test_Apply(phrases)=1 && testClearCount=0 && testTabletPastes=0 && testScanCount=4 && testScrollCount=0, "clean first-four run uses four scans, no reset, no scrolling")
+cleared := []
+for _, row in clean
+    cleared.Push(row.Clone())
+cleared[14] := other
+dirty := clean.Clone(), dirty.Push({text:"123",x:270,y:329,words:[]})
+testScans := [dirty,cleared,[dropdown],clean,choice,emptyNot,batch], testScanCount := testClearCount := testTabletPastes := testButtonCount := testScrollCount := 0
+Check(Test_Apply(phrases)=1 && testClearCount=1 && testTabletPastes=1 && testScrollCount=1, "dirty form resets and restores Tablet once, with no per-modifier scrolling")
+fivePhrases := phrases.Clone(), fivePhrases.Push("expl experience gain in map"), five := batch.Clone()
+five[2] := {text:"+ Add Stat Filter",x:351,y:941,w:137,h:18}, five[7] := {text:"+ Add Stat Group",x:607,y:980,w:150,h:18}
+testResult := {text:"Explicit #% increased Experience Gain in Map",x:31,y:935,w:400,h:18}, five.Push(testResult)
+testScans := [clean,choice,emptyNot,batch,[],five], testScanCount := testClearCount := testTabletPastes := testButtonCount := testScrollCount := 0
+Check(Test_Apply(fivePhrases)=1 && testScanCount=6 && testClearCount=0 && testScrollCount=0, "fifth modifier uses normal verification and reuses the batch scan")
 for _, scale in [1, 0.75]
     for _, direction in [-1, 1]
         for _, rows in [0, 1, 2, 20]
@@ -122,6 +194,59 @@ Test_WinActive(params*)
 {
     Return 1
 }
+Test_Scan()
+{
+    global testScans, testScanCount
+    testScanCount++
+    Return testScans[testScanCount]
+}
+Test_SectionsOff(params*)
+{
+    Return 1
+}
+Test_Click(line)
+{
+    global testClearCount
+    If line.y > 1000
+        testClearCount++
+    Return IsObject(line)
+}
+Test_Scroll(params*)
+{
+    global testScrollCount
+    testScrollCount++
+    Return 1
+}
+Test_Paste(text)
+{
+    global testTabletPastes
+    If (text="tablet")
+        testTabletPastes++
+    Return 1
+}
+Test_AddButton()
+{
+    global testButtonCount
+    testButtonCount++
+    Return {x:350,y:735+(testButtonCount-1)*41,w:137,h:21}
+}
+Test_FastResult(button)
+{
+    Return {x:31,y:button.y+30,w:400,h:23}
+}
+Test_BottomLines(lines)
+{
+    Return lines
+}
+Test_Input(lines,phrase,button)
+{
+    Return button
+}
+Test_Result(params*)
+{
+    global testResult
+    Return testResult
+}
 Blank(value)
 {
     Return value = ""
@@ -138,9 +263,15 @@ Check(condition, name)
     FileAppend, % (condition ? "PASS: " : "FAIL: ") name "`n", *
 }
 '@
-$functions = @('Init_market_tablets','Settings_market_tabletsSave','MarketTablets_Key','MarketTablets_Find','MarketTablets_Category','MarketTablets_QueryKey','MarketTablets_QueryMatches','MarketTablets_SameMod','MarketTablets_ModKey','MarketTablets_VerifyMod','MarketTablets_PopupBounds','MarketTablets_Border')
+$functions = @('Init_market_tablets','Settings_market_tabletsSave','MarketTablets_Key','MarketTablets_Find','MarketTablets_Category','MarketTablets_QueryKey','MarketTablets_QueryMatches','MarketTablets_SameMod','MarketTablets_ModKey','MarketTablets_VerifyMod','MarketTablets_PopupBounds','MarketTablets_Border','MarketTablets_Clean','MarketTablets_SectionsOff','MarketTablets_AddButton','MarketTablets_PhraseMatches','MarketTablets_VerifyBatch','MarketTablets_ModRows','MarketTablets_Not')
 $harness = '#Include ' + (Join-Path $SourceDirectory 'data/External Functions.ahk') + "`r`n" + $harness
 foreach ($name in $functions) { $harness += "`r`n" + (Read-Function $name) }
+$harness += "`r`n" + (Read-Function 'MarketTablets_Needle').Replace('A_ScriptDir', ('"' + $SourceDirectory + '"'))
+$flow = (Read-Function 'MarketTablets_Apply').Replace('MarketTablets_Apply(', 'Test_Apply(')
+foreach ($action in @('Scan','SectionsOff','Click','Scroll','Paste','AddButton','FastResult','BottomLines','Input','Result')) {
+    $flow = $flow.Replace(('MarketTablets_' + $action + '('), ('Test_' + $action + '('))
+}
+$harness += "`r`n" + $flow
 $harness += "`r`n" + (Read-Function 'MarketTablets_Omni').Replace('GetKeyState(', 'Test_KeyState(')
 $harness += "`r`n" + (Read-Function 'MarketTablets_Ready').Replace('GetKeyState(', 'Test_KeyState(').Replace('WinActive(', 'Test_WinActive(')
 foreach ($helper in @(@('modules/GUI.ahk','LLK_ControlGet'), @('modules/_functions.ahk','LLK_IniRead'), @('modules/_functions.ahk','LLK_StringCase'))) {

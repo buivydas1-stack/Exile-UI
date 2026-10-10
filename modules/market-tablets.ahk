@@ -25,7 +25,7 @@ Settings_market_tablets(GUI)
 	Gui, %GUI%: Font, norm
 	Gui, %GUI%: Add, Checkbox, % "xs HWNDhwnd Checked" settings.market_tablets.enable, Enable long-press Omni for Tablet searches
 	vars.hwnd.settings.market_tablets_enable := hwnd
-	Gui, %GUI%: Add, Text, % "xs w" settings.general.fWidth * 62, One modifier search per line. Each phrase must return exactly one result.`nTablet must be selected. Other filters are reset; the final search is left ready.`nPress Esc or switch windows to stop.
+	Gui, %GUI%: Add, Text, % "xs w" settings.general.fWidth * 62, One modifier search per line. Each phrase must return exactly one result.`nTablet must be selected. Extra filters or an unfamiliar form trigger a reset.`nThe final search is left ready. Press Esc or switch windows to stop.
 	text := ""
 	For _, phrase in settings.market_tablets.phrases
 		text .= (text ? "`n" : "") phrase
@@ -319,18 +319,212 @@ MarketTablets_Paste(text)
 	Return MarketTablets_Ready()
 }
 
-MarketTablets_Scroll(bottom := 0)
+MarketTablets_Scroll(bottom := 0, amount := 40)
 {
 	local
 	global vars
 	If !MarketTablets_Ready()
 		Return 0
-	MouseMove, % vars.client.x + Round(vars.client.h*0.56), % vars.client.y + Round(vars.client.h*0.68), 0
-	Loop, 40
+	MouseMove, % vars.client.x + Round(vars.client.h*0.25), % vars.client.y + Round(vars.client.h*0.68), 0
+	Loop, % amount
+	{
+		If vars.market_tablets.cancelled || !WinActive("ahk_id " vars.hwnd.poe_client) || GetKeyState("Esc", "P")
+			Return 0
 		Click, % bottom ? "WheelDown" : "WheelUp"
-	MouseMove, % vars.client.x + Round(vars.client.h*0.63), % vars.client.y + Round(vars.client.h*0.15), 0
+	}
+	; Keep the pointer in the filter pane while the game consumes wheel events.
 	Sleep 150
+	MouseMove, % vars.client.x + Round(vars.client.h*0.63), % vars.client.y + Round(vars.client.h*0.15), 0
 	Return MarketTablets_Ready()
+}
+
+MarketTablets_Clean(lines, category := "tablet")
+{
+	local
+	global vars
+	scale := vars.client.h/1440
+	If (MarketTablets_Category(lines) != category)
+		Return 0
+	; Recognise the compact empty form, including blank numeric inputs and Any rarity.
+	positions := {"type filters": 243, "item category": 288, "item level": 329, "item rarity": 288, "item quality": 329
+		, "equipment filters": 373, "requirements": 419, "endgame filters": 466, "miscellaneous": 513
+		, "trade filters": 560, "stat filters": 610, "add stat filter": 652, "add stat group": 695}
+	For text, y in positions
+	{
+		line := MarketTablets_Find(lines, text)
+		If !line || Abs(line.y-y*scale) > 12*scale
+			Return 0
+	}
+	name := 0, rarity := 0, buttons := groups := 0
+	For _, line in lines
+	{
+		If line.y < 176*scale || line.y > 1070*scale
+			Continue
+		key := MarketTablets_Key(line.text)
+		If RegExMatch(key, "^[a-z]?searchitems$") && line.x < 100*scale
+			name := 1
+		Else If !RegExMatch(key, "^(typefilters|itemcategory|itemlevel|itemrarity|itemquality|equipmentfilters|requirements|endgamefilters|miscellaneous|tradefilters|statfilters|addstatfilter|addstatgroup|instantbuyout|any|tablet|min|max|v)$")
+			Return 0
+		If (key = "addstatfilter")
+			buttons++
+		If (key = "addstatgroup")
+			groups++
+		For _, word in line.words
+			If MarketTablets_Key(word.text) = "any" && word.x > 650*scale && word.x < 790*scale && Abs(word.y-288*scale) < 12*scale
+				rarity := 1
+	}
+	Return name && rarity && buttons = 1 && groups = 1
+}
+
+MarketTablets_Needle(name)
+{
+	local
+	global vars
+	static needles := {}, height
+	If (height != vars.client.h)
+	{
+		For _, bitmap in needles
+			Gdip_DisposeImage(bitmap)
+		needles := {}, height := vars.client.h
+	}
+	If !needles.HasKey(name)
+	{
+		source := Gdip_CreateBitmapFromFile(A_ScriptDir "\img\GUI\market-tablets-" name ".bmp")
+		If (source <= 0)
+			Return 0
+		needles[name] := Gdip_ResizeBitmap(source, Round(Gdip_GetImageWidth(source)*height/1440), Round(Gdip_GetImageHeight(source)*height/1440), 1)
+		Gdip_DisposeImage(source)
+	}
+	Return needles[name]
+}
+
+MarketTablets_SectionsOff(lines, bitmap := 0)
+{
+	local
+	global vars, settings
+	needle := MarketTablets_Needle("off"), scale := vars.client.h/1440, owned := !bitmap
+	If owned
+		bitmap := Gdip_BitmapFromHWND(vars.hwnd.poe_client, 1)
+	If !needle || bitmap <= 0
+	{
+		If owned && bitmap > 0
+			Gdip_DisposeImage(bitmap)
+		Return 0
+	}
+	xOffset := settings.general.blackbars ? vars.client.x-vars.monitor.x : 0, empty := MarketTablets_Needle("values")
+	; Dark placeholder text is often omitted by OCR. Prove the numeric fields are still blank.
+	off := empty && Gdip_ImageSearch(bitmap, empty, matches, xOffset+Round(248*scale), Round(315*scale), xOffset+Round(852*scale), Round(360*scale), 35,, 1, 1) > 0
+	For _, text in ["equipment filters", "requirements", "endgame filters", "miscellaneous", "trade filters"]
+	{
+		line := MarketTablets_Find(lines, text), y := line.y+line.h/2
+		If !line || Gdip_ImageSearch(bitmap, needle, matches, xOffset+Round(808*scale), Round(y-22*scale), xOffset+Round(850*scale), Round(y+22*scale), 35,, 1, 1) < 1
+			off := 0
+	}
+	If owned
+		Gdip_DisposeImage(bitmap)
+	Return off
+}
+
+MarketTablets_AddButton(bitmap := 0)
+{
+	local
+	global vars, settings
+	needle := MarketTablets_Needle("add"), scale := vars.client.h/1440, owned := !bitmap
+	If owned
+		bitmap := Gdip_BitmapFromHWND(vars.hwnd.poe_client, 1)
+	If !needle || bitmap <= 0
+	{
+		If owned && bitmap > 0
+			Gdip_DisposeImage(bitmap)
+		Return 0
+	}
+	xOffset := settings.general.blackbars ? vars.client.x-vars.monitor.x : 0, button := ""
+	If Gdip_ImageSearch(bitmap, needle, matches, xOffset+Round(320*scale), Round(240*scale), xOffset+Round(520*scale), Round(1070*scale), 35,, 1, 0) > 0
+		For _, match in StrSplit(matches, "`n")
+		{
+			point := StrSplit(match, ",")
+			If !button || point.2 > button.y
+				button := {"x": point.1-xOffset, "y": point.2, "w": 137*scale, "h": 21*scale}
+		}
+	If owned
+		Gdip_DisposeImage(bitmap)
+	Return button
+}
+
+MarketTablets_FastResult(button)
+{
+	local
+	global vars, settings
+	scale := vars.client.h/1440, xOffset := settings.general.blackbars ? vars.client.x-vars.monitor.x : 0
+	Loop, 5
+	{
+		If !MarketTablets_Ready()
+			Return 0
+		bitmap := Gdip_BitmapFromHWND(vars.hwnd.poe_client, 1)
+		If (bitmap <= 0)
+			Return 0
+		bounds := MarketTablets_PopupBounds(bitmap, Round(button.y+button.h/2), scale, xOffset)
+		Gdip_DisposeImage(bitmap)
+		If IsObject(bounds)
+			Return {"x": 30*scale, "y": bounds.1, "w": 400*scale, "h": bounds.2-bounds.1}
+		Sleep 60
+	}
+	Return 0
+}
+
+MarketTablets_PhraseMatches(text, phrase)
+{
+	local
+	key := MarketTablets_Key(text), matched := 0
+	StringLower, phrase, phrase
+	For _, token in StrSplit(RegExReplace(phrase, "[^a-z0-9 ]", " "), " ")
+		If StrLen(token) >= 3
+		{
+			If !InStr(key, token)
+				Return 0
+			matched++
+		}
+	Return matched > 0
+}
+
+MarketTablets_VerifyBatch(lines, phrases, count)
+{
+	local
+	not := MarketTablets_Not(lines), button := MarketTablets_Find(lines, "add stat filter", 1), rows := [], added := []
+	If !not || !button
+		Return 0
+	For _, row in MarketTablets_ModRows(lines)
+		If row.y > not.y && row.y < button.y
+		{
+			position := 1
+			While position <= rows.Count() && rows[position].y < row.y
+				position++
+			rows.InsertAt(position, row)
+		}
+	If rows.Count() != count
+		Return 0
+	For index, row in rows
+	{
+		If !MarketTablets_PhraseMatches(row.text, phrases[index]) || MarketTablets_SameMod(row.text, added)
+			Return 0
+		added.Push(row.text)
+	}
+	Return added
+}
+
+MarketTablets_BottomLines(lines)
+{
+	local
+	global vars
+	Loop, 5
+	{
+		button := MarketTablets_Find(lines, "add stat filter", 1), group := MarketTablets_Find(lines, "add stat group")
+		If button && group && button.y < group.y && group.y-button.y < vars.client.h*0.08
+			Return lines
+		If (A_Index = 5) || !MarketTablets_Scroll(1, 6)
+			Return []
+		lines := MarketTablets_Scan()
+	}
 }
 
 MarketTablets_Not(lines)
@@ -426,34 +620,34 @@ MarketTablets_Apply(phrases)
 	}
 	If (MarketTablets_Category(lines) != "tablet")
 		Return "Stopped: selected Item Category could not be confirmed as Tablet"
-	; A stat dropdown may cover the fixed footer. Dismiss it without changing filters.
-	If !MarketTablets_Click({"x": vars.client.h*0.29, "y": vars.client.h*0.055, "w": 30, "h": 30})
-		Return "Stopped: market closed or cancelled"
-	; Collapsed/disabled sections can retain hidden values. Reset after category confirmation
-	; instead of assuming that an apparently empty form has no other filters.
-	clear := {"x": vars.client.h*0.523, "y": vars.client.h*0.75, "w": vars.client.h*0.034, "h": vars.client.h*0.034}
-	If !MarketTablets_Click(clear)
-		Return "Stopped: market closed or cancelled"
-	MarketTablets_Scroll(), lines := MarketTablets_Scan()
-	If !MarketTablets_Find(lines, "item category")
+	If !MarketTablets_Clean(lines) || !MarketTablets_SectionsOff(lines)
 	{
-		If !MarketTablets_Click(MarketTablets_Find(lines, "type filters"))
-			Return "Stopped: Type Filters could not be located"
-		lines := MarketTablets_Scan()
+		; A dirty or unrecognised form needs a reset. Leave an already clean Tablet form alone.
+		If !MarketTablets_Click({"x": vars.client.h*0.29, "y": vars.client.h*0.055, "w": 30, "h": 30})
+			Return "Stopped: market closed or cancelled"
+		clear := {"x": vars.client.h*0.523, "y": vars.client.h*0.75, "w": vars.client.h*0.034, "h": vars.client.h*0.034}
+		If !MarketTablets_Click(clear)
+			Return "Stopped: market closed or cancelled"
+		MarketTablets_Scroll(), lines := MarketTablets_Scan()
+		If !MarketTablets_Find(lines, "item category")
+		{
+			If !MarketTablets_Click(MarketTablets_Find(lines, "type filters"))
+				Return "Stopped: Type Filters could not be located"
+			lines := MarketTablets_Scan()
+		}
+		If !MarketTablets_Clean(lines, "any") || !MarketTablets_SectionsOff(lines)
+			Return "Stopped: Clear Filters did not produce a verified empty form"
+		category := MarketTablets_Find(lines, "item category")
+		category.x := vars.client.h*0.18, category.w := vars.client.h*0.10
+		If !MarketTablets_Click(category) || !MarketTablets_Paste("tablet")
+			Return "Stopped: could not restore Tablet"
+		lines := MarketTablets_Scan(), match := ""
+		For _, line in lines
+			If (MarketTablets_Key(line.text) = "tablet") && (line.y > category.y+vars.client.h*0.012) && (line.y < category.y+vars.client.h*0.06)
+				match := line
+		If !MarketTablets_Click(match) || (MarketTablets_Category(lines := MarketTablets_Scan()) != "tablet")
+			Return "Stopped: restored Tablet category was not verified"
 	}
-	If (MarketTablets_Category(lines) != "any") || MarketTablets_ModRows(lines).Count() || MarketTablets_Not(lines)
-		Return "Stopped: Clear Filters did not produce a verified empty form"
-	category := MarketTablets_Find(lines, "item category")
-	category.x := vars.client.h*0.18, category.w := vars.client.h*0.10
-	If !MarketTablets_Click(category) || !MarketTablets_Paste("tablet")
-		Return "Stopped: could not restore Tablet"
-	lines := MarketTablets_Scan(), match := ""
-	For _, line in lines
-		If (MarketTablets_Key(line.text) = "tablet") && (line.y > category.y+vars.client.h*0.012) && (line.y < category.y+vars.client.h*0.06)
-			match := line
-	If !MarketTablets_Click(match) || (MarketTablets_Category(lines := MarketTablets_Scan()) != "tablet")
-		Return "Stopped: restored Tablet category was not verified"
-	MarketTablets_Scroll(1), lines := MarketTablets_Scan()
 	If !MarketTablets_Click(MarketTablets_Find(lines, "add stat group"))
 		Return "Stopped: Add Stat Group could not be located"
 	lines := MarketTablets_Scan(), choice := MarketTablets_Find(lines, "not")
@@ -462,10 +656,36 @@ MarketTablets_Apply(phrases)
 	lines := MarketTablets_Scan()
 	If !MarketTablets_Not(lines)
 		Return "Stopped: NOT group was not verified"
-	added := []
+	; The first four fit the standard compact form. Locate controls and prove a
+	; single result using images, then verify all selected rows in one OCR scan.
+	button := MarketTablets_AddButton(), fastCount := button && button.y > MarketTablets_Not(lines).y ? Min(4, phrases.Count()) : 0, added := []
+	Loop, % fastCount
+	{
+		index := A_Index
+		If !button || !MarketTablets_Click(button) || !MarketTablets_Paste(phrases[index])
+			Return "Stopped at modifier " index ": add control unavailable or cancelled"
+		candidate := MarketTablets_FastResult(button)
+		If !candidate
+			Return "Stopped at modifier " index ": phrase must return exactly one modifier"
+		If !MarketTablets_Click(candidate)
+			Return "Stopped: market closed or cancelled"
+		nextButton := MarketTablets_AddButton()
+		If (index < fastCount) && (!nextButton || nextButton.y <= button.y+vars.client.h*0.012)
+			Return "Stopped at modifier " index ": next add control was not verified"
+		button := nextButton
+	}
+	If fastCount
+	{
+		lines := MarketTablets_BottomLines(MarketTablets_Scan())
+		added := MarketTablets_VerifyBatch(lines, phrases, fastCount)
+		If !IsObject(added)
+			Return "Stopped: the first " fastCount " modifiers were not verified together"
+	}
 	For index, phrase in phrases
 	{
-		MarketTablets_Scroll(1), lines := MarketTablets_Scan()
+		If (index <= fastCount)
+			Continue
+		lines := MarketTablets_BottomLines(lines)
 		button := MarketTablets_Find(lines, "add stat filter", 1), group := MarketTablets_Find(lines, "add stat group")
 		If !button || !group || (button.y >= group.y) || (group.y-button.y > vars.client.h*0.08)
 			Return "Stopped at modifier " index ": NOT group's Add Stat Filter could not be located"
@@ -480,7 +700,7 @@ MarketTablets_Apply(phrases)
 		selected := candidate.text
 		If !MarketTablets_Click(candidate)
 			Return "Stopped: market closed or cancelled"
-		MarketTablets_Scroll(1), lines := MarketTablets_Scan()
+		lines := MarketTablets_BottomLines(MarketTablets_Scan())
 		If !MarketTablets_Find(lines, "add stat filter", 1) || !MarketTablets_Find(lines, "add stat group")
 			Return "Stopped at modifier " index ": modifier selection was not verified"
 		verified := 0

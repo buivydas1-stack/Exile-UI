@@ -103,7 +103,21 @@ for j, row in rows
 vars.omnikey.item := {"name": "Cabal Navigation", "itembase": "Waystone", "rarity": "Rare"}
 Check(Omni_Context() = "mapiteminfo", "both enabled: waystone hold shows both views")
 held := 0
-Check(Omni_Context() = "mapinfo", "waystone short press preserves Map Info")
+Check(Omni_Context() = "context_menu", "waystone short press opens wiki links")
+for _, rarity in ["Normal", "Magic", "Rare", "Unique"]
+    for _, unidentified in [0,1]
+    {
+        vars.omnikey.item.rarity := rarity, vars.omnikey.item.unid := unidentified
+        Check(Omni_Context() = "context_menu", "Waystone short press: " rarity " unidentified=" unidentified)
+    }
+vars.omnikey.item.rarity := "Rare", vars.omnikey.item.unid := 0
+settings.features.iteminfo := 0, held := 1
+Check(Omni_Context() = "mapinfo", "Map Info-only Waystone hold keeps Map Info")
+held := 0
+Check(Omni_Context() = "context_menu", "Map Info-only Waystone short press opens links")
+settings.features.mapinfo := 0
+Check(Omni_Context() = "context_menu", "Waystone links work with both information features disabled")
+settings.features.iteminfo := settings.features.mapinfo := 1
 held := 1, vars.omnikey.item := {"name": "Void Directive", "class": "Tablet", "itembase": "Abyss Tablet", "rarity": "Rare"}
 Check(Omni_Context() = "mapiteminfo", "tablet hold uses ranged affixes")
 vars.omnikey.item := {"name": "Rare Quiver", "itembase": "Broadhead Quiver", "rarity": "Rare"}

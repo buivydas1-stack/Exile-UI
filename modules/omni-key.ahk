@@ -310,11 +310,13 @@ Omni_Context(mode := 0)
 			If (A_TickCount >= vars.omnikey.start + 200)
 				Return "relics"
 
-	; A map-item hold adds Item Info; a waystone short press keeps the existing Map Info action.
-	If settings.features.iteminfo && Iteminfo_MapItemKind(item)
+	; A Waystone short press opens wiki links; holding keeps the enabled information views.
+	If settings.features.iteminfo && Iteminfo_MapItemKind(item) || settings.features.mapinfo && (Iteminfo_MapItemKind(item) = "waystone")
 		While GetKeyState(vars.omnikey.hotkey, "P") || !Blank(vars.omnikey.hotkey2) && GetKeyState(vars.omnikey.hotkey2, "P")
 			If (A_TickCount >= vars.omnikey.start + 100)
-				Return "mapiteminfo"
+				Return settings.features.iteminfo ? "mapiteminfo" : "mapinfo"
+	If (Iteminfo_MapItemKind(item) = "waystone")
+		Return "context_menu"
 
 	If (!vars.poe_version && !LLK_PatternMatch(item.name "`n" item.itembase, "", ["Doryani", "Maple"]) && LLK_PatternMatch(item.name "`n" item.itembase, "", ["Map", "Chart", "Invitation", "Blueprint:", "Contract:", "Expedition Logbook"])
 	|| vars.poe_version && LLK_PatternMatch(item.name "`n" item.itembase, "", [Lang_Trans("items_waystone")]))
@@ -394,6 +396,15 @@ Omni_ContextMenu()
 				vars.hwnd.omni_context.wiki_exact := hwnd, vars.omni_context[hwnd] := sacrifice . (InStr(reward, "sacrificed") ? "" : "|" reward)
 				Clipboard := "^(" StrReplace(sacrifice . (InStr(reward, "sacrificed") ? "" : "|" reward), " ", ".") ")$"
 			}
+		}
+		Else If (Iteminfo_MapItemKind(item) = "waystone")
+		{
+			Gui, omni_context: Add, Text, % "Section gOmni_ContextMenuPick HWNDhwnd" style, % "wiki: Maps"
+			ControlGetPos,,, w1,,, % "ahk_id " hwnd
+			vars.hwnd.omni_context.wiki_maps := hwnd, vars.omni_context[hwnd] := "Map"
+			Gui, omni_context: Add, Text, % "Section xs gOmni_ContextMenuPick HWNDhwnd1" style, % "wiki: Map modifiers"
+			ControlGetPos,,, w2,,, % "ahk_id " hwnd1
+			vars.hwnd.omni_context.wiki_map_modifiers := hwnd1, vars.omni_context[hwnd1] := "Category:Waystone_modifiers"
 		}
 		Else
 		{

@@ -124,9 +124,21 @@ testScans := [dirty,cleared,[dropdown],clean,choice,emptyNot,batch], testScanCou
 Check(Test_Apply(phrases)=1 && testClearCount=1 && testTabletPastes=1 && testScrollCount=1, "dirty form resets and restores Tablet once, with no per-modifier scrolling")
 fivePhrases := phrases.Clone(), fivePhrases.Push("expl experience gain in map"), five := batch.Clone()
 five[2] := {text:"+ Add Stat Filter",x:351,y:941,w:137,h:18}, five[7] := {text:"+ Add Stat Group",x:607,y:980,w:150,h:18}
-testResult := {text:"Explicit #% increased Experience Gain in Map",x:31,y:935,w:400,h:18}, five.Push(testResult)
-testScans := [clean,choice,emptyNot,batch,[],five], testScanCount := testClearCount := testTabletPastes := testButtonCount := testScrollCount := 0
-Check(Test_Apply(fivePhrases)=1 && testScanCount=6 && testClearCount=0 && testScrollCount=0, "fifth modifier uses normal verification and reuses the batch scan")
+testResult := {text:"Explicit #% increased Experience Gain in Map",x:31,y:903.5,w:400,h:18}, five.Push(testResult)
+testScans := [clean,choice,emptyNot,five], testScanCount := testClearCount := testTabletPastes := testButtonCount := testScrollCount := 0
+Check(Test_Apply(fivePhrases)=1 && testScanCount=4 && testClearCount=0 && testScrollCount=0, "five modifiers use one combined verification without scrolling")
+sixPhrases := fivePhrases.Clone(), sixPhrases.Push("expl map contains an additional shrine"), six := five.Clone()
+six[2] := {text:"+ Add Stat Filter",x:351,y:982,w:137,h:18}, six[7] := {text:"+ Add Stat Group",x:607,y:1021,w:150,h:18}
+six.Push({text:"Explicit Map contains an additional Shrine",x:31,y:944.5,w:400,h:18})
+testScans := [clean,choice,emptyNot,six], testScanCount := testClearCount := testTabletPastes := testButtonCount := testScrollCount := 0
+Check(Test_Apply(sixPhrases)=1 && testScanCount=4 && testScrollCount=0 && testButtonCount=7, "all six additions use images and one batch OCR check")
+wrongSix := six.Clone(), wrongSix.RemoveAt(9)
+Check(!MarketTablets_VerifyBatch(wrongSix,sixPhrases,6,reason) && reason="OCR read 5 of 6 selected rows", "missing sixth selection is still rejected")
+sevenPhrases := sixPhrases.Clone(), sevenPhrases.Push("pseudo total maximum life"), seven := six.Clone()
+seven[2] := {text:"+ Add Stat Filter",x:351,y:1023,w:137,h:18}, seven[7] := {text:"+ Add Stat Group",x:607,y:1062,w:150,h:18}
+testResult := {text:"Pseudo # total maximum Life",x:31,y:985.5,w:400,h:18}, seven.Push(testResult)
+testScans := [clean,choice,emptyNot,six,[],seven], testScanCount := testClearCount := testTabletPastes := testButtonCount := testScrollCount := 0
+Check(Test_Apply(sevenPhrases)=1 && testScanCount=6 && testScrollCount=0, "seventh addition keeps the existing individual OCR path")
 testNextReady := 1, testNextCount := 0, testNextButtons := [{y:735},{y:735},{y:776}]
 Check(Test_NextButtonHelper({y:735}).y=776 && testNextCount=3, "short click delay waits only while the next add control is unchanged")
 testNextReady := 0, testNextCount := 0

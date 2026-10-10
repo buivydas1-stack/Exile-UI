@@ -300,7 +300,7 @@ MarketTablets_Click(line)
 		Return 0
 	Click, % Round(vars.client.x + line.x + Min(line.w/2, 100*vars.client.h/1440)) " " Round(vars.client.y + line.y + line.h/2)
 	MouseMove, % vars.client.x + Round(vars.client.h*0.63), % vars.client.y + Round(vars.client.h*0.15), 0
-	Sleep 70
+	Sleep 20
 	Return MarketTablets_Ready()
 }
 
@@ -313,9 +313,9 @@ MarketTablets_Paste(text)
 	If ErrorLevel
 		Return 0
 	SendInput, ^a
-	Sleep 20
+	Sleep 5
 	SendInput, ^v
-	Sleep 100
+	Sleep 30
 	Return MarketTablets_Ready()
 }
 
@@ -456,7 +456,7 @@ MarketTablets_FastResult(button)
 	local
 	global vars, settings
 	scale := vars.client.h/1440, xOffset := settings.general.blackbars ? vars.client.x-vars.monitor.x : 0
-	Loop, 5
+	Loop, 15
 	{
 		If !MarketTablets_Ready()
 			Return 0
@@ -467,7 +467,7 @@ MarketTablets_FastResult(button)
 		Gdip_DisposeImage(bitmap)
 		If IsObject(bounds)
 			Return {"x": 30*scale, "y": bounds.1, "w": 400*scale, "h": bounds.2-bounds.1}
-		Sleep 60
+		Sleep 20
 	}
 	Return 0
 }
@@ -476,14 +476,14 @@ MarketTablets_NextButton(previous)
 {
 	local
 	global vars
-	Loop, 5
+	Loop, 14
 	{
 		If !MarketTablets_Ready()
 			Return 0
 		button := MarketTablets_AddButton()
 		If button && button.y > previous.y+vars.client.h*0.012
 			Return button
-		Sleep 40
+		Sleep 15
 	}
 	Return 0
 }
@@ -694,9 +694,9 @@ MarketTablets_Apply(phrases)
 		lines := MarketTablets_Scan()
 	If !MarketTablets_Not(lines)
 		Return "Stopped: NOT group was not verified"
-	; The first four fit the standard compact form. Locate controls and prove a
+	; Up to six fit the standard compact form. Locate controls and prove a
 	; single result using images, then verify all selected rows in one OCR scan.
-	button := MarketTablets_AddButton(), fastCount := button && button.y > MarketTablets_Not(lines).y ? Min(4, phrases.Count()) : 0, added := []
+	button := MarketTablets_AddButton(), fastCount := button && button.y > MarketTablets_Not(lines).y ? Min(6, phrases.Count()) : 0, added := []
 	Loop, % fastCount
 	{
 		index := A_Index

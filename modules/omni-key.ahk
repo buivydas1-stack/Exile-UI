@@ -513,15 +513,21 @@ Omni_ContextMenu()
 				vars.hwnd.omni_context.chromatics := hwnd
 			}
 		}
+		If vars.poe_version && (corruption_page := Omni_CorruptionModifiersPage(item.class))
+		{
+			Gui, omni_context: Add, Text, % "Section" (hwnd ? " xs " : " ") "gOmni_ContextMenuPick HWNDhwnd" style, % "wiki: Corruption modifiers"
+			ControlGetPos,,, w14,,, % "ahk_id " hwnd
+			vars.hwnd.omni_context.wiki_corruption_modifiers := hwnd, vars.omni_context[hwnd] := corruption_page
+		}
 		If vars.poe_version
 		{
 			Gui, omni_context: Add, Text, % "Section" (hwnd ? " xs " : " ") "gOmni_ContextMenuPick HWNDhwnd" style, % "corruption"
 			ControlGetPos,,, w13,,, % "ahk_id " hwnd
 			vars.hwnd.omni_context.corruption := hwnd
 		}
-		Loop 13
+		Loop 14
 			w%A_Index% := !w%A_Index% ? 0 : w%A_Index%
-		width := Max(w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w13)
+		width := Max(w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w13, w14)
 	}
 
 	MouseGetPos, mouseX, mouseY
@@ -542,6 +548,25 @@ Omni_ContextMenu()
 	Else Gui, omni_context: Destroy
 }
 
+Omni_CorruptionModifiersPage(item_class)
+{
+	local
+	; The wiki shares tables across item classes. Unlisted equipment opens the overview.
+	static tables := {"body armours": "Armours", "helmets": "Armours", "gloves": "Armours", "boots": "Armours"
+		, "bucklers": "Offhand", "foci": "Offhand", "shields": "Offhand", "quivers": "Offhand"
+		, "one hand axes": "Melee_Martial_Weapons", "two hand axes": "Melee_Martial_Weapons"
+		, "one hand maces": "Melee_Martial_Weapons", "two hand maces": "Melee_Martial_Weapons"
+		, "one hand swords": "Melee_Martial_Weapons", "two hand swords": "Melee_Martial_Weapons"
+		, "claws": "Melee_Martial_Weapons", "daggers": "Melee_Martial_Weapons", "flails": "Melee_Martial_Weapons"
+		, "spears": "Melee_Martial_Weapons", "quarterstaves": "Melee_Martial_Weapons"
+		, "bows": "Ranged_Martial_Weapons", "crossbows": "Ranged_Martial_Weapons"
+		, "sceptres": "Non-Martial_Weapons", "staves": "Non-Martial_Weapons", "wands": "Non-Martial_Weapons", "traptools": "Non-Martial_Weapons"
+		, "amulets": "Jewellery", "rings": "Jewellery", "belts": "Jewellery", "jewels": "Jewellery", "base jewels": "Jewellery"
+		, "talismans": "", "transcendent limbs": "", "fishing rods": ""}
+	If !tables.HasKey(item_class)
+		Return ""
+	Return "List_of_item_corruption_enchantment_modifiers" (tables[item_class] ? "#" tables[item_class] : "")
+}
 Omni_ContextMenuPick(cHWND)
 {
 	local

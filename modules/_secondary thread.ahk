@@ -65,6 +65,7 @@ Return
 #Include modules\sanctum.ahk
 #Include modules\screen-checks.ahk
 #Include modules\search-strings.ahk
+#Include modules\market-tablets.ahk
 #Include modules\seed-explorer.ahk
 #Include modules\settings menu.ahk
 #Include modules\stash-ninja.ahk

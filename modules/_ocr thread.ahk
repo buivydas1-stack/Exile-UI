@@ -67,7 +67,8 @@ Generic()
 	global
 
 	hbmBitmap := Gdip_CreateHBITMAPFromBitmap(pBitmap, 0), pIRandomAccessStream := HBitmapToRandomAccessStream(hbmBitmap), Gdip_DisposeImage(pBitmap)
-	text := ocr_uwp(pIRandomAccessStream, (english ? "en" : "FirstAvailable")), ObjRelease(pIRandomAccessStream)
+	details := market_tablets ? [] : ""
+	text := ocr_uwp(pIRandomAccessStream, (english ? "en" : "FirstAvailable"), details), ObjRelease(pIRandomAccessStream)
 	StringUpper, text, text
 
 	If !Blank(debug) && GetKeyState(debug, "P")
@@ -81,7 +82,7 @@ Generic()
 		Gui, test: Show
 		WinWaitClose, OCR debug
 	}
-	Else StringSend(text ? "OCR successful:`n" text : "OCR failed")
+	Else StringSend(text ? "OCR successful:`n" (market_tablets ? json.dump(details) : text) : "OCR failed")
 	DeleteObject(hbmBitmap)
 }
 

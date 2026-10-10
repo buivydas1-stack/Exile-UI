@@ -6020,6 +6020,8 @@ Settings_searchstrings()
 	vars.hwnd.help_tooltips["settings_searchstrings universal"] := hwnd, vars.hwnd.settings.universal_bind := vars.hwnd.help_tooltips["settings_hotkeys formatting"] := hwnd2
 	vars.hwnd.settings.universal_save := hwnd3, vars.hwnd.settings.universal_save_bar := hwnd31
 	vars.hwnd.settings["edit_universal_search-strings"] := hwnd1, vars.hwnd.help_tooltips["settings_searchstrings edit" handle] := hwnd4
+	If vars.poe_version
+		Settings_market_tablets(GUI)
 }
 
 Settings_searchstrings2(cHWND)

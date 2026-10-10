@@ -7,6 +7,11 @@
 		Return			;there is a separate function activated when releasing the omni-key that clears this variable again
 	vars.omnikey.last := A_TickCount
 	String_Scroll("ESC") ;close searchstring-scrolling
+	If MarketTablets_Omni()
+	{
+		Omni_Release()
+		Return
+	}
 
 	If vars.client.stream
 	{

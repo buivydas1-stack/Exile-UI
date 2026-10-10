@@ -10152,7 +10152,7 @@ CLSIDFromString(IID, ByRef CLSID)
 	Return &CLSID
 }
 
-ocr_uwp(IRandomAccessStream, language := "FirstAvailable")
+ocr_uwp(IRandomAccessStream, language := "FirstAvailable", details := "")
 {
 	local
 
@@ -10216,7 +10216,10 @@ ocr_uwp(IRandomAccessStream, language := "FirstAvailable")
 		DllCall(NumGet(NumGet(lines+0)+6*A_PtrSize), "ptr", lines, "int", A_Index-1, "ptr*", OcrLine)
 		DllCall(NumGet(NumGet(OcrLine+0)+7*A_PtrSize), "ptr", OcrLine, "ptr*", hText) 
 		buffer := DllCall("Combase.dll\WindowsGetStringRawBuffer", "ptr", hText, "uint*", length, "ptr")
-		text .= StrGet(buffer, "UTF-16") "`n"
+		line_text := StrGet(buffer, "UTF-16"), text .= line_text "`n"
+		DeleteHString(hText)
+		If IsObject(details)
+			details.Push(OCR_LineDetails(OcrLine, line_text))
 		ObjRelease(OcrLine)
 		OcrLine := ""
 	}
@@ -10231,6 +10234,30 @@ ocr_uwp(IRandomAccessStream, language := "FirstAvailable")
 	ObjRelease(lines)
 	BitmapDecoderObject := BitmapDecoderObject1 := SoftwareBitmap := BitmapFrame := BitmapFrame1 := BitmapFrame2 := OcrResult := OcrResult1 := lines := ""
 	return text
+}
+
+; Optional word positions for clients that need to locate controls, rather than just read text.
+OCR_LineDetails(line, text)
+{
+	local
+	result := {"text": text, "words": []}, xMin := yMin := 100000, xMax := yMax := 0
+	DllCall(NumGet(NumGet(line+0)+6*A_PtrSize), "ptr", line, "ptr*", words)
+	DllCall(NumGet(NumGet(words+0)+7*A_PtrSize), "ptr", words, "uint*", count)
+	Loop, % count
+	{
+		DllCall(NumGet(NumGet(words+0)+6*A_PtrSize), "ptr", words, "uint", A_Index-1, "ptr*", word)
+		VarSetCapacity(rect, 16, 0)
+		DllCall(NumGet(NumGet(word+0)+6*A_PtrSize), "ptr", word, "ptr", &rect)
+		DllCall(NumGet(NumGet(word+0)+7*A_PtrSize), "ptr", word, "ptr*", hText)
+		buffer := DllCall("Combase.dll\WindowsGetStringRawBuffer", "ptr", hText, "uint*", length, "ptr")
+		x := NumGet(rect, 0, "float"), y := NumGet(rect, 4, "float"), w := NumGet(rect, 8, "float"), h := NumGet(rect, 12, "float")
+		result.words.Push({"text": StrGet(buffer, "UTF-16"), "x": x, "y": y, "w": w, "h": h})
+		xMin := Min(xMin, x), yMin := Min(yMin, y), xMax := Max(xMax, x+w), yMax := Max(yMax, y+h)
+		DeleteHString(hText), ObjRelease(word)
+	}
+	ObjRelease(words)
+	result.x := xMin, result.y := yMin, result.w := xMax-xMin, result.h := yMax-yMin
+	Return result
 }
 
 CreateClass(string, interface, ByRef Class)

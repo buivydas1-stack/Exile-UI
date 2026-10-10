@@ -86,6 +86,12 @@ Hotkeys_ESC()
 {
 	local
 	global vars, settings
+	If vars.market_tablets.busy
+	{
+		vars.market_tablets.cancelled := 1
+		KeyWait, ESC
+		Return
+	}
 
 	If vars.hwnd.radial.main && WinExist("ahk_id " vars.hwnd.radial.main)
 	{

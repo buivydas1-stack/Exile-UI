@@ -87,6 +87,7 @@ Init_macros(), LLK_Log("initialized chat-macro settings")
 Init_mapinfo(), LLK_Log("initialized map-info settings")
 Init_TLDR(), LLK_Log("initialized TLDR-tooltip settings")
 Init_searchstrings(), LLK_Log("initialized search-strings settings")
+Init_market_tablets()
 Init_leveltracker(), LLK_Log("initialized act-tracker settings")
 Init_actdecoder(), LLK_Log("initialized act-decoder settings")
 Init_maptracker(), LLK_Log("initialized map-tracker settings")
@@ -162,6 +163,7 @@ Return
 #Include modules\sanctum.ahk
 #Include modules\screen-checks.ahk
 #Include modules\search-strings.ahk
+#Include modules\market-tablets.ahk
 #Include modules\seed-explorer.ahk
 #Include modules\settings menu.ahk
 #Include modules\stash-ninja.ahk

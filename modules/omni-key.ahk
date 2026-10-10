@@ -404,7 +404,9 @@ Omni_ContextMenu()
 			vars.hwnd.omni_context.wiki_maps := hwnd, vars.omni_context[hwnd] := "Map"
 			Gui, omni_context: Add, Text, % "Section xs gOmni_ContextMenuPick HWNDhwnd1" style, % "wiki: Map modifiers"
 			ControlGetPos,,, w2,,, % "ahk_id " hwnd1
-			vars.hwnd.omni_context.wiki_map_modifiers := hwnd1, vars.omni_context[hwnd1] := "Category:Waystone_modifiers"
+			waystone_tier := Iteminfo_WaystoneTier(clip)
+			tier_band := (waystone_tier >= 1 && waystone_tier <= 5) ? "low" : (waystone_tier >= 6 && waystone_tier <= 10) ? "mid" : (waystone_tier >= 11 && waystone_tier <= 16) ? "high" : ""
+			vars.hwnd.omni_context.wiki_map_modifiers := hwnd1, vars.omni_context[hwnd1] := tier_band ? "List_of_modifiers_for_waystones_(" tier_band "_tier)" : "Category:Waystone_modifiers"
 		}
 		Else
 		{

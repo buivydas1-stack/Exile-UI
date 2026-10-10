@@ -2,7 +2,7 @@
 
 Open the Exile-UI menu by holding Esc, click the cog, then choose **Search-strings**. Under **Tablet exclusions**, enter one modifier search phrase per line and click **Save Tablet exclusions**. The enable switch and phrases persist in `ini 2/market-tablets.ini`.
 
-With **Item Category: Tablet** selected in the market, hold Omni for at least half a second and release it. The automation confirms Tablet, creates a NOT group, and adds the saved exclusions. It leaves the Search button for you to press. Short Omni presses retain their existing behavior.
+With **Item Category: Tablet** selected in the market, hold Omni for 0.2 seconds. The automation starts while the key is still held, confirms Tablet, creates a NOT group, and adds the saved exclusions. It runs once per press and leaves the Search button for you to press. Short Omni presses retain their existing behavior.
 
 An already clean, compact Tablet form keeps its selected category. Clear Filters and Tablet reselection are used only when extra filters, enabled sections, or an unfamiliar form need a reset. If Tablet cannot be confirmed, the automation stops before clearing. It can dismiss open dropdowns, scroll to the category, and expand Type Filters to read it.
 

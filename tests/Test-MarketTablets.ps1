@@ -158,8 +158,8 @@ vars := {poe_version:" 2", client:{stream:0}, market_tablets:{busy:0}, omnikey:{
 settings := {market_tablets:{enable:1}, general:{input_method:1}}
 testHeld := 0, testHeader := 1, testRuns := 0
 Check(!MarketTablets_Omni() && testRuns = 0, "short Omni leaves existing action available")
-testHeld := 1
-Check(MarketTablets_Omni() && testRuns = 1, "long Omni invokes Tablet automation once")
+testHeld := 1, vars.omnikey.last := A_TickCount-210, testStarted := A_TickCount
+Check(MarketTablets_Omni() && testRuns = 1 && testRunHeld = 1 && A_TickCount-testStarted < 150, "200 ms hold starts immediately while Omni is still held")
 vars.poe_version := ""
 Check(!MarketTablets_Omni() && testRuns = 1, "PoE1 Omni is unaffected")
 vars.poe_version := " 2", settings.market_tablets.enable := 0
@@ -210,8 +210,14 @@ MarketTablets_Header()
 }
 MarketTablets_Run()
 {
-    global testRuns
+    global testRuns, testHeld, testRunHeld
+    testRunHeld := testHeld
     testRuns++
+}
+Test_KeyWait()
+{
+    global testHeld
+    testHeld := 0
 }
 Test_WinActive(params*)
 {
@@ -323,7 +329,9 @@ foreach ($action in @('Scan','SectionsOff','Click','Scroll','Paste','AddButton',
 $harness += "`r`n" + $flow
 $harness += "`r`n" + (Read-Function 'MarketTablets_NextButton').Replace('MarketTablets_NextButton(', 'Test_NextButtonHelper(').Replace('MarketTablets_Ready(', 'Test_NextReady(').Replace('MarketTablets_AddButton(', 'Test_NextAddButton(')
 $harness += "`r`n" + (Read-Function 'MarketTablets_Scan').Replace('MarketTablets_Scan(', 'Test_ScanHelper(').Replace('MarketTablets_Ready(', 'Test_ScanReady(')
-$harness += "`r`n" + (Read-Function 'MarketTablets_Omni').Replace('GetKeyState(', 'Test_KeyState(')
+$omni = (Read-Function 'MarketTablets_Omni').Replace('GetKeyState(', 'Test_KeyState(')
+$omni = [regex]::Replace($omni, 'KeyWait, % vars\.omnikey\.hotkey2?', 'Test_KeyWait()')
+$harness += "`r`n" + $omni
 $harness += "`r`n" + (Read-Function 'MarketTablets_Ready').Replace('GetKeyState(', 'Test_KeyState(').Replace('WinActive(', 'Test_WinActive(')
 foreach ($helper in @(@('modules/GUI.ahk','LLK_ControlGet'), @('modules/_functions.ahk','LLK_IniRead'), @('modules/_functions.ahk','LLK_StringCase'))) {
     $helperSource = [IO.File]::ReadAllText((Join-Path $SourceDirectory $helper[0]))

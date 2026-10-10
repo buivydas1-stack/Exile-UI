@@ -84,11 +84,8 @@ MarketTablets_Omni()
 		Return 0
 	While GetKeyState(vars.omnikey.hotkey, "P")
 	{
-		If (A_TickCount - vars.omnikey.last >= 500)
+		If (A_TickCount - vars.omnikey.last >= 200)
 		{
-			KeyWait, % vars.omnikey.hotkey
-			If !Blank(vars.omnikey.hotkey2)
-				KeyWait, % vars.omnikey.hotkey2
 			MarketTablets_Run()
 			Return 1
 		}

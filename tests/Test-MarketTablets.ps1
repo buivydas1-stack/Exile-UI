@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$OutputDirectory = (Join-Path $env:TEMP 'exile-ui-market-tablet-tests'),
     [string]$SourceDirectory = (Split-Path $PSScriptRoot)
 )
@@ -86,20 +86,35 @@ Gdip_DrawImage(graphics,needle,350,649,137,21), Gdip_DrawImage(graphics,needle,3
 Check(Abs(MarketTablets_AddButton(bitmap).y-899)<3, "image lookup chooses NOT group's lowest add control")
 Gdip_DeleteGraphics(graphics), Gdip_DisposeImage(bitmap)
 phrases := ["expl map % azmer spirits","a sp contains # map","#% gold map ex","expl map #% shr"]
-batch := [{text:"NOT",x:31,y:695},{text:"+ Add Stat Filter",x:351,y:900}]
+batch := [{text:"NOT",x:31,y:695,h:18},{text:"+ Add Stat Filter",x:351,y:900,h:18}]
 texts := ["Explicit Map has #% increased chance to contain Azmeri Spirits","Explicit Map contains # additional Azmeri Spirit","Explicit #% increased Gold found in Map (Gold Piles)","Explicit Map has #% increased chance to contain Shrines"]
 for index, text in texts
-    batch.Push({text:text,x:31,y:730+index*41,w:530,h:18})
+    batch.Push({text:text,x:31,y:698.5+index*41,w:530,h:18})
 batch.Push({text:"+ Add Stat Group",x:607,y:939,w:150,h:18})
 Check(MarketTablets_VerifyBatch(batch,phrases,4).Count()=4, "first four verified together in screen order")
+goldOmitted := batch.Clone(), goldOmitted[5] := {text:"INCREASED GOLD FOUND IN MAP (GOLD PILES)",x:126,y:822.5,w:338,h:16.5}
+Check(MarketTablets_VerifyBatch(goldOmitted,phrases,4).Count()=4, "actual Gold OCR without Explicit prefix still verifies the batch")
+goldSplit := goldOmitted.Clone(), goldSplit.Push({text:"EXPLICIT #%",x:31,y:823,w:90,h:13})
+Check(MarketTablets_VerifyBatch(goldSplit,phrases,4).Count()=4, "split modifier prefix and text combine into one selected row")
+goldWords := goldOmitted.Clone(), goldWords[5] := {text:"INCREASED GOLD FOUND IN MAP MIN MAX",x:126,y:822.5,w:640,h:16.5,words:[{text:"INCREASED GOLD FOUND IN MAP",x:126},{text:"MIN",x:585},{text:"MAX",x:705}]}
+Check(MarketTablets_VerifyBatch(goldWords,phrases,4).Count()=4, "value-field words are excluded from the batch text column")
 wrong := batch.Clone(), wrong.RemoveAt(6)
-Check(!MarketTablets_VerifyBatch(wrong,phrases,4), "missing batch row stops the run")
+Check(!MarketTablets_VerifyBatch(wrong,phrases,4,reason) && reason="OCR read 3 of 4 selected rows", "missing batch row reports the actual OCR count")
 wrong := batch.Clone(), wrong[6] := {text:texts.1,x:31,y:894,w:530,h:18}
 Check(!MarketTablets_VerifyBatch(wrong,phrases,4), "wrong or duplicate batch modifier stops the run")
+wrong := batch.Clone(), wrong[5] := {text:"INCREASED EXPERIENCE GAIN IN MAP",x:126,y:822.5,w:338,h:16.5}
+Check(!MarketTablets_VerifyBatch(wrong,phrases,4,reason) && reason="modifier 3 did not match its saved phrase", "missing prefix does not permit a different modifier")
+wrong := batch.Clone(), wrong.RemoveAt(2)
+Check(!MarketTablets_VerifyBatch(wrong,phrases,4,reason) && reason="NOT group or add control was not read", "missing control reports a specific verification error")
+wrong := batch.Clone(), wrong.Push({text:"Unexpected additional stat",x:31,y:715,w:300,h:18})
+Check(!MarketTablets_VerifyBatch(wrong,phrases,4), "unexpected text row in the selected group is rejected")
 Check(!MarketTablets_PhraseMatches(texts.3,phrases.4), "batch verification rejects a different search result")
 choice := [{text:"NOT",x:610,y:720,w:60,h:18}], emptyNot := [{text:"NOT",x:31,y:695,w:60,h:18},{text:"+ Add Stat Filter",x:351,y:738,w:137,h:18},{text:"+ Add Stat Group",x:607,y:781,w:150,h:18}]
-testScans := [clean,choice,emptyNot,batch], testScanCount := testClearCount := testTabletPastes := testButtonCount := testScrollCount := 0
+testScans := [clean,choice,emptyNot,goldOmitted], testScanCount := testClearCount := testTabletPastes := testButtonCount := testScrollCount := 0, testClips := []
 Check(Test_Apply(phrases)=1 && testClearCount=0 && testTabletPastes=0 && testScanCount=4 && testScrollCount=0, "clean first-four run uses four scans, no reset, no scrolling")
+Check(testClips[2].w < 300 && testClips[2].h < 300 && testClips[3].h < 260, "group creation uses small menu and group scans")
+testScans := [clean,[],choice,[],emptyNot,batch], testScanCount := testClearCount := testTabletPastes := testButtonCount := testScrollCount := 0
+Check(Test_Apply(phrases)=1 && testScanCount=6 && testScrollCount=0, "unread cropped menu or group retries a full scan without scrolling")
 cleared := []
 for _, row in clean
     cleared.Push(row.Clone())
@@ -112,6 +127,14 @@ five[2] := {text:"+ Add Stat Filter",x:351,y:941,w:137,h:18}, five[7] := {text:"
 testResult := {text:"Explicit #% increased Experience Gain in Map",x:31,y:935,w:400,h:18}, five.Push(testResult)
 testScans := [clean,choice,emptyNot,batch,[],five], testScanCount := testClearCount := testTabletPastes := testButtonCount := testScrollCount := 0
 Check(Test_Apply(fivePhrases)=1 && testScanCount=6 && testClearCount=0 && testScrollCount=0, "fifth modifier uses normal verification and reuses the batch scan")
+testNextReady := 1, testNextCount := 0, testNextButtons := [{y:735},{y:735},{y:776}]
+Check(Test_NextButtonHelper({y:735}).y=776 && testNextCount=3, "short click delay waits only while the next add control is unchanged")
+testNextReady := 0, testNextCount := 0
+Check(!Test_NextButtonHelper({y:735}) && testNextCount=0, "cancelled next-control wait performs no capture")
+testOCR := [{text:"NOT",x:62,y:40,w:110,h:36,words:[{text:"NOT",x:62,y:40,w:110,h:36}]}]
+scanned := Test_ScanHelper({x:562,y:679,w:295,h:158})
+Check(scanned.1.x=593 && scanned.1.y=699 && scanned.1.words.1.x=593 && scanned.1.words.1.y=699 && scanned.1.w=55 && scanned.1.h=18, "cropped scan restores both line and word panel coordinates")
+Check(testOCRClip.1=562 && testOCRClip.2=679 && testOCRClip.3=295 && testOCRClip.4=158, "cropped scan sends its exact region to the existing OCR worker")
 for _, scale in [1, 0.75]
     for _, direction in [-1, 1]
         for _, rows in [0, 1, 2, 20]
@@ -194,10 +217,11 @@ Test_WinActive(params*)
 {
     Return 1
 }
-Test_Scan()
+Test_Scan(clip := "")
 {
-    global testScans, testScanCount
+    global testScans, testScanCount, testClips
     testScanCount++
+    testClips.Push(clip)
     Return testScans[testScanCount]
 }
 Test_SectionsOff(params*)
@@ -229,6 +253,31 @@ Test_AddButton()
     global testButtonCount
     testButtonCount++
     Return {x:350,y:735+(testButtonCount-1)*41,w:137,h:21}
+}
+Test_NextButton(previous)
+{
+    Return Test_AddButton()
+}
+Test_NextReady()
+{
+    global testNextReady
+    Return testNextReady
+}
+Test_NextAddButton()
+{
+    global testNextButtons, testNextCount
+    testNextCount++
+    Return testNextButtons[testNextCount]
+}
+Test_ScanReady()
+{
+    Return 1
+}
+OCR_Start(params*)
+{
+    global testOCR, testOCRClip, json
+    testOCRClip := params
+    Return json.dump(testOCR)
 }
 Test_FastResult(button)
 {
@@ -263,15 +312,17 @@ Check(condition, name)
     FileAppend, % (condition ? "PASS: " : "FAIL: ") name "`n", *
 }
 '@
-$functions = @('Init_market_tablets','Settings_market_tabletsSave','MarketTablets_Key','MarketTablets_Find','MarketTablets_Category','MarketTablets_QueryKey','MarketTablets_QueryMatches','MarketTablets_SameMod','MarketTablets_ModKey','MarketTablets_VerifyMod','MarketTablets_PopupBounds','MarketTablets_Border','MarketTablets_Clean','MarketTablets_SectionsOff','MarketTablets_AddButton','MarketTablets_PhraseMatches','MarketTablets_VerifyBatch','MarketTablets_ModRows','MarketTablets_Not')
-$harness = '#Include ' + (Join-Path $SourceDirectory 'data/External Functions.ahk') + "`r`n" + $harness
+$functions = @('Init_market_tablets','Settings_market_tabletsSave','MarketTablets_Key','MarketTablets_Find','MarketTablets_Category','MarketTablets_QueryKey','MarketTablets_QueryMatches','MarketTablets_SameMod','MarketTablets_ModKey','MarketTablets_VerifyMod','MarketTablets_PopupBounds','MarketTablets_Border','MarketTablets_Clean','MarketTablets_SectionsOff','MarketTablets_AddButton','MarketTablets_PhraseMatches','MarketTablets_VerifyBatch','MarketTablets_Not')
+$harness = '#Include ' + (Join-Path $SourceDirectory 'data/External Functions.ahk') + "`r`n#Include " + (Join-Path $SourceDirectory 'data/JSON.ahk') + "`r`n" + $harness
 foreach ($name in $functions) { $harness += "`r`n" + (Read-Function $name) }
 $harness += "`r`n" + (Read-Function 'MarketTablets_Needle').Replace('A_ScriptDir', ('"' + $SourceDirectory + '"'))
 $flow = (Read-Function 'MarketTablets_Apply').Replace('MarketTablets_Apply(', 'Test_Apply(')
-foreach ($action in @('Scan','SectionsOff','Click','Scroll','Paste','AddButton','FastResult','BottomLines','Input','Result')) {
+foreach ($action in @('Scan','SectionsOff','Click','Scroll','Paste','AddButton','FastResult','NextButton','BottomLines','Input','Result')) {
     $flow = $flow.Replace(('MarketTablets_' + $action + '('), ('Test_' + $action + '('))
 }
 $harness += "`r`n" + $flow
+$harness += "`r`n" + (Read-Function 'MarketTablets_NextButton').Replace('MarketTablets_NextButton(', 'Test_NextButtonHelper(').Replace('MarketTablets_Ready(', 'Test_NextReady(').Replace('MarketTablets_AddButton(', 'Test_NextAddButton(')
+$harness += "`r`n" + (Read-Function 'MarketTablets_Scan').Replace('MarketTablets_Scan(', 'Test_ScanHelper(').Replace('MarketTablets_Ready(', 'Test_ScanReady(')
 $harness += "`r`n" + (Read-Function 'MarketTablets_Omni').Replace('GetKeyState(', 'Test_KeyState(')
 $harness += "`r`n" + (Read-Function 'MarketTablets_Ready').Replace('GetKeyState(', 'Test_KeyState(').Replace('WinActive(', 'Test_WinActive(')
 foreach ($helper in @(@('modules/GUI.ahk','LLK_ControlGet'), @('modules/_functions.ahk','LLK_IniRead'), @('modules/_functions.ahk','LLK_StringCase'))) {

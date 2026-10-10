@@ -8,6 +8,8 @@ An already clean, compact Tablet form keeps its selected category. Clear Filters
 
 Each phrase must return exactly one modifier. The first four additions use quick image checks for the moving Add Stat Filter control and the single-result dropdown, followed by one OCR scan to verify the selected batch. Further additions reuse the preceding verified scan and scroll only when the add controls are out of view. Both dropdown directions are checked; wheel input stays in the left filter pane until the game has consumed it.
 
+Group creation scans only the condition menu and new group, with a full-panel fallback if either is unreadable. Click pauses are 70 ms; pasting waits 20 ms after selecting the input and 100 ms after pasting. Image checks wait for the next add control only while it has not moved. Batch verification reads the selected text column, so a missing italic Explicit prefix on the Gold modifier does not discard that row. A failed check reports the unread row count or modifier number.
+
 Zero results, multiple results, duplicate selections, a changed market layout, or failed verification stop the run. Inspect any partially completed form before searching. Press Esc or switch windows to stop.
 
 The initial phrases are:
@@ -19,6 +21,6 @@ a sp contains # map
 expl map #% shr
 ```
 
-This module uses the existing image-search engine, native Windows OCR worker, clipboard handling, and INI settings. English OCR and keyboard Omni are required. The original implementation was validated live at 2560×1440 with ten exclusions, scrolling, existing filters, and ambiguous searches. The revised batching and conditional reset have automated checks and screenshot checks; their live verification is pending. Other resolutions use client-height scaling; their live layout remains unverified. PoE1 is unaffected.
+This module uses the existing image-search engine, native Windows OCR worker, clipboard handling, and INI settings. English OCR and keyboard Omni are required. The original implementation was validated live at 2560×1440 with ten exclusions, scrolling, existing filters, and ambiguous searches. The user confirmed that the batch revision adds the four exclusions, but its OCR check rejected the correctly added rows. The verifier correction and shorter delays have automated checks and native OCR screenshot checks; their live verification is pending. Other resolutions use client-height scaling; their live layout remains unverified. PoE1 is unaffected.
 
 Run the focused checks with `tests/Test-MarketTablets.ps1`. They cover category confirmation, conditional resets, batching, lowest-control image lookup, dropdown boundaries, clipped modifier verification, Omni routing, cancellation, and settings persistence.

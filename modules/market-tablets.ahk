@@ -127,13 +127,16 @@ MarketTablets_Ready()
 	Return !vars.market_tablets.cancelled && WinActive("ahk_id " vars.hwnd.poe_client) && !GetKeyState("Esc", "P") && MarketTablets_Header()
 }
 
-MarketTablets_Scan()
+MarketTablets_Scan(clip := "")
 {
 	local
 	global vars, json
 	If !MarketTablets_Ready()
 		Return []
-	text := OCR_Start(0, 0, Round(vars.client.h*0.605), Round(vars.client.h*0.80),, "market_tablets")
+	If !IsObject(clip)
+		clip := {"x": 0, "y": 0, "w": vars.client.h*0.605, "h": vars.client.h*0.80}
+	x := Round(clip.x), y := Round(clip.y)
+	text := OCR_Start(x, y, Round(clip.w), Round(clip.h),, "market_tablets")
 	If !text || !MarketTablets_Ready()
 		Return []
 	Try lines := json.Load(text)
@@ -141,9 +144,9 @@ MarketTablets_Scan()
 		Return []
 	For _, line in lines
 	{
-		line.x /= 2, line.y /= 2, line.w /= 2, line.h /= 2
+		line.x := line.x/2+x, line.y := line.y/2+y, line.w /= 2, line.h /= 2
 		For _, word in line.words
-			word.x /= 2, word.y /= 2, word.w /= 2, word.h /= 2
+			word.x := word.x/2+x, word.y := word.y/2+y, word.w /= 2, word.h /= 2
 	}
 	Return lines
 }
@@ -300,7 +303,7 @@ MarketTablets_Click(line)
 		Return 0
 	Click, % Round(vars.client.x + line.x + Min(line.w/2, 100*vars.client.h/1440)) " " Round(vars.client.y + line.y + line.h/2)
 	MouseMove, % vars.client.x + Round(vars.client.h*0.63), % vars.client.y + Round(vars.client.h*0.15), 0
-	Sleep 150
+	Sleep 70
 	Return MarketTablets_Ready()
 }
 
@@ -313,9 +316,9 @@ MarketTablets_Paste(text)
 	If ErrorLevel
 		Return 0
 	SendInput, ^a
-	Sleep 40
+	Sleep 20
 	SendInput, ^v
-	Sleep 250
+	Sleep 100
 	Return MarketTablets_Ready()
 }
 
@@ -472,6 +475,22 @@ MarketTablets_FastResult(button)
 	Return 0
 }
 
+MarketTablets_NextButton(previous)
+{
+	local
+	global vars
+	Loop, 5
+	{
+		If !MarketTablets_Ready()
+			Return 0
+		button := MarketTablets_AddButton()
+		If button && button.y > previous.y+vars.client.h*0.012
+			Return button
+		Sleep 40
+	}
+	Return 0
+}
+
 MarketTablets_PhraseMatches(text, phrase)
 {
 	local
@@ -487,26 +506,53 @@ MarketTablets_PhraseMatches(text, phrase)
 	Return matched > 0
 }
 
-MarketTablets_VerifyBatch(lines, phrases, count)
+MarketTablets_VerifyBatch(lines, phrases, count, ByRef reason := "")
 {
 	local
-	not := MarketTablets_Not(lines), button := MarketTablets_Find(lines, "add stat filter", 1), rows := [], added := []
-	If !not || !button
+	global vars
+	reason := "", scale := vars.client.h/1440
+	group := MarketTablets_Not(lines), button := MarketTablets_Find(lines, "add stat filter", 1), rows := [], added := []
+	If !group || !button
+	{
+		reason := "NOT group or add control was not read"
 		Return 0
-	For _, row in MarketTablets_ModRows(lines)
-		If row.y > not.y && row.y < button.y
+	}
+	; OCR sometimes omits the italic modifier type (notably Explicit on Gold).
+	; Read the selected text column by position, excluding the value fields.
+	For _, line in lines
+		If line.y > group.y+group.h && line.y < button.y && line.x < 580*scale
 		{
+			row := line.Clone(), text := ""
+			For _, word in row.words
+				If word.x < 580*scale
+					text .= (text ? " " : "") word.text
+			row.text := text ? text : row.text
+			row.text := RegExReplace(row.text, "i)^\s*exp[liu/]+c[liu/]+t\s*", "explicit ")
 			position := 1
-			While position <= rows.Count() && rows[position].y < row.y
+			While position <= rows.Count() && rows[position].y+rows[position].h/2 < row.y+row.h/2-9*scale
 				position++
-			rows.InsertAt(position, row)
+			previous := rows[position]
+			If previous && Abs(previous.y+previous.h/2-row.y-row.h/2) < 9*scale
+				previous.text := row.x < previous.x ? row.text " " previous.text : previous.text " " row.text
+			Else rows.InsertAt(position, row)
 		}
 	If rows.Count() != count
+	{
+		reason := "OCR read " rows.Count() " of " count " selected rows"
 		Return 0
+	}
 	For index, row in rows
 	{
-		If !MarketTablets_PhraseMatches(row.text, phrases[index]) || MarketTablets_SameMod(row.text, added)
+		If !MarketTablets_PhraseMatches(row.text, phrases[index])
+		{
+			reason := "modifier " index " did not match its saved phrase"
 			Return 0
+		}
+		If MarketTablets_SameMod(row.text, added)
+		{
+			reason := "modifier " index " appears duplicated"
+			Return 0
+		}
 		added.Push(row.text)
 	}
 	Return added
@@ -535,20 +581,6 @@ MarketTablets_Not(lines)
 		If (line.x < vars.client.h*0.07) && RegExMatch(MarketTablets_Key(line.text), "^nota?$")
 			Return line
 	Return 0
-}
-
-MarketTablets_ModRows(lines)
-{
-	local
-	rows := []
-	For _, line in lines
-	{
-		; The italic Explicit prefix commonly reads as Expuc/t and can join the next word.
-		text := RegExReplace(line.text, "i)^\s*exp[liu/]+c[liu/]+t\s*", "explicit ")
-		If RegExMatch(text, "i)^\s*(explicit|implicit|pseudo|fractured|enchant|desecrated|augment|sanctum)\b")
-			line.text := text, rows.Push(line)
-	}
-	Return rows
 }
 
 MarketTablets_SameMod(text, added)
@@ -648,12 +680,21 @@ MarketTablets_Apply(phrases)
 		If !MarketTablets_Click(match) || (MarketTablets_Category(lines := MarketTablets_Scan()) != "tablet")
 			Return "Stopped: restored Tablet category was not verified"
 	}
-	If !MarketTablets_Click(MarketTablets_Find(lines, "add stat group"))
+	group := MarketTablets_Find(lines, "add stat group")
+	If !MarketTablets_Click(group)
 		Return "Stopped: Add Stat Group could not be located"
-	lines := MarketTablets_Scan(), choice := MarketTablets_Find(lines, "not")
+	; The verified empty form fixes this menu's location. Scan only the menu,
+	; then only the new group, instead of the entire filter panel twice.
+	lines := MarketTablets_Scan({"x": vars.client.h*0.39, "y": group.y-vars.client.h*0.03, "w": vars.client.h*0.205, "h": vars.client.h*0.20})
+	choice := MarketTablets_Find(lines, "not")
+	If !choice
+		choice := MarketTablets_Find(MarketTablets_Scan(), "not")
 	If !choice || (choice.x < vars.client.h*0.35) || !MarketTablets_Click(choice)
 		Return "Stopped: NOT condition could not be located"
-	lines := MarketTablets_Scan()
+	; Include the previous Stats header: OCR can otherwise omit the short NOT label.
+	lines := MarketTablets_Scan({"x": 0, "y": group.y-vars.client.h*0.073, "w": vars.client.h*0.595, "h": vars.client.h*0.174})
+	If !MarketTablets_Not(lines)
+		lines := MarketTablets_Scan()
 	If !MarketTablets_Not(lines)
 		Return "Stopped: NOT group was not verified"
 	; The first four fit the standard compact form. Locate controls and prove a
@@ -669,17 +710,17 @@ MarketTablets_Apply(phrases)
 			Return "Stopped at modifier " index ": phrase must return exactly one modifier"
 		If !MarketTablets_Click(candidate)
 			Return "Stopped: market closed or cancelled"
-		nextButton := MarketTablets_AddButton()
-		If (index < fastCount) && (!nextButton || nextButton.y <= button.y+vars.client.h*0.012)
+		nextButton := MarketTablets_NextButton(button)
+		If !nextButton
 			Return "Stopped at modifier " index ": next add control was not verified"
 		button := nextButton
 	}
 	If fastCount
 	{
 		lines := MarketTablets_BottomLines(MarketTablets_Scan())
-		added := MarketTablets_VerifyBatch(lines, phrases, fastCount)
+		added := MarketTablets_VerifyBatch(lines, phrases, fastCount, reason)
 		If !IsObject(added)
-			Return "Stopped: the first " fastCount " modifiers were not verified together"
+			Return "Stopped: " reason
 	}
 	For index, phrase in phrases
 	{
